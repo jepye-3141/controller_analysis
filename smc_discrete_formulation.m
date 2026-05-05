@@ -25,7 +25,8 @@ function state_dot = temporary_dynamics(t, state, u, params)
     b       = params.b    ;
     d       = params.d    ;
     TM      = params.TM   ;
-    Omegas = inv(TM)*u;
+    TM_inv  = params.TM_inv;
+    Omegas = TM_inv*u;
     Omegas = sqrt(Omegas);
     Omegar = Omegas(1) - Omegas(2) + Omegas(3) - Omegas(4);
 
@@ -78,8 +79,9 @@ function uk = SMC_discrete(xkp1, xkp1_d, xk, xk_d, ukm1, params)
     b       = params.b    ;
     d       = params.d    ;
     TM      = params.TM   ;
-              
-    Omegas = inv(TM)*ukm1;
+    TM_inv  = params.TM_inv;
+
+    Omegas = TM_inv*ukm1;
     Omegas = sqrt(Omegas);
     Omegar = real(Omegas(1) - Omegas(2) + Omegas(3) - Omegas(4));
 
@@ -171,6 +173,7 @@ params.TM = [b b b b;
       0 -b 0 b;
       -b 0 b 0;
       d -d d -d];
+params.TM_inv = inv(params.TM);
 tspan = 0:params.dt:(4000*params.dt);
 
 for i = 1:4000

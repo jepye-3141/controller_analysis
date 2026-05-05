@@ -49,9 +49,7 @@ function xdot = lin_dynamics(t, state)
        kmt -kmt kmt -kmt] * Thrust; % plus config
     u(1) = u(1) - g*m;
 
-    % Step 3: Calculate derivatives
     xdot = A*state + B*u;
-    y = C*state + D*u;
 end
 
 function xdot = nl_dynamics(t, state)

@@ -9,7 +9,7 @@ STEP = 1;
 F8 = 2;
 SPIRAL = 3;
 STABILIZE = 4;
-lead_comp = 1;
+
 
 %
 load_system("lqr_swarm")
@@ -224,12 +224,32 @@ spiral_out_discrete_smc = sim("discrete_smc_swarm")
 
 %% Ballistic case
 env = aero_constants('std_atm.csv', 'Aerodynamic_Char_120mm_Mortar.xlsx');
+
+Vo_set = 100; % initial vel at muzzle exit in m/s
+el_0_set = 45; % vertical angle of departure in deg (pos up)
+az_0_set = 15;  % horizontal angle of departure in deg(pos to right)
+
+w_z0_set=1; % initial pitch rate in rad/s (pos nose up)
+w_y0_set=0.5; % initial transverse yaw rate in rad/s (pos for left yaw)
+
+alpha_0_set = 2; % exit elevation (deg)
+beta_0_set= -0.5; % exit azimuth (deg)
+
+% initial position of munition center of gravity (CG) wrt intertial frame
+x_0 = 0; % x-axis (m) - range direction
+y_0 = 0; % y-axis (m) - altitude
+z_0 = 0; % z-axis (m) - cross-range direction
+
+t_max = 300; % sim end time
+p = 0; % initial spin rate in rad/s
+
+ballistic_solution = eom2(t_max, Vo_set, el_0_set, az_0_set, w_z0_set, w_y0_set, ...
+    alpha_0_set, beta_0_set, p, x_0, y_0, z_0, env, false);
+
 load_system("lqr_swarm_single")
 load_system("pid_redux_single")
 load_system("smc_swarm_single")
 load_system("discrete_smc_swarm_single")
-
-load("ballistic_log.mat")
 
 deploy_point = ballistic_solution.trajectory(ballistic_solution.apogee_idx, :).';
 rot0 = deg2rad(deploy_point(13:15));
@@ -239,8 +259,8 @@ rot = eul2rotm([rot0(3) rot0(2) rot0(1)], "ZYX");
 vel0 = rot*deploy_point(1:3); % earth -> body
 rotvel0 = rot*deploy_point(4:6); % earth -> body
 
-xf = [0; 0; 0];
 xi = [vel0/3; rotvel0/3; rot0; x0];
+xf_ballistic = [xi(10:11,:);0];
 
 simcase = STABILIZE;
 set_param("lqr_swarm_single","StopTime","100", 'SimulationMode','Rapid')
@@ -253,11 +273,35 @@ set_param("discrete_smc_swarm_single","StopTime","100", 'SimulationMode','Rapid'
 step_out_discrete_smc_ballistic = sim("discrete_smc_swarm_single")
 
 %% Ballistic envelope testing
-ballistic_envelope_lqr = [];
-ballistic_envelope_pid = [];
-ballistic_envelope_smc = [];
-ballistic_envelope_discrete_smc = [];
+env = aero_constants('std_atm.csv', 'Aerodynamic_Char_120mm_Mortar.xlsx');
+
+Vo_set = 100; % initial vel at muzzle exit in m/s
+el_0_set = 45; % vertical angle of departure in deg (pos up)
+az_0_set = 15;  % horizontal angle of departure in deg(pos to right)
+
+w_z0_set=1; % initial pitch rate in rad/s (pos nose up)
+w_y0_set=0.5; % initial transverse yaw rate in rad/s (pos for left yaw)
+
+alpha_0_set = 2; % exit elevation (deg)
+beta_0_set= -0.5; % exit azimuth (deg)
+
+% initial position of munition center of gravity (CG) wrt intertial frame
+x_0 = 0; % x-axis (m) - range direction
+y_0 = 0; % y-axis (m) - altitude
+z_0 = 0; % z-axis (m) - cross-range direction
+
+t_max = 300; % sim end time
+p = 0; % initial spin rate in rad/s
+
+ballistic_solution = eom2(t_max, Vo_set, el_0_set, az_0_set, w_z0_set, w_y0_set, ...
+    alpha_0_set, beta_0_set, p, x_0, y_0, z_0, env, false);
+
 test_points = 1:10:size(ballistic_solution.trajectory, 1);
+n_test = size(test_points, 2);
+envelope_lqr_mask = false(1, n_test);
+envelope_pid_mask = false(1, n_test);
+envelope_smc_mask = false(1, n_test);
+envelope_dsmc_mask = false(1, n_test);
 for i = 1:size(test_points,2)
     idx = test_points(i);
     deploy_point = ballistic_solution.trajectory(idx, :).';
@@ -268,8 +312,8 @@ for i = 1:size(test_points,2)
     vel0 = rot*deploy_point(1:3); % earth -> body
     rotvel0 = rot*deploy_point(4:6); % earth -> body
     
-    xf = [0; 0; 0];
     xi = [vel0; rotvel0; rot0; x0];
+    xf_ballistic = [xi(10:11,:);0];
     
     simcase = STABILIZE;
     set_param("lqr_swarm_single","StopTime","30", 'SimulationMode','Rapid')
@@ -283,25 +327,29 @@ for i = 1:size(test_points,2)
 
     if lqr_trial.tout(end) == 30
         if norm(xi(10:11) - lqr_trial.posout.Data(:,1:2,end).') < 10
-            ballistic_envelope_lqr = [ballistic_envelope_lqr idx];
+            envelope_lqr_mask(i) = true;
         end
     end
     if pid_trial.tout(end) == 30
         if norm(xi(10:11) - pid_trial.posout.Data(:,1:2,end).') < 10
-            ballistic_envelope_pid = [ballistic_envelope_pid idx];
+            envelope_pid_mask(i) = true;
         end
     end
     if smc_trial.tout(end) == 30
         if norm(xi(10:11) - smc_trial.posout.Data(:,1:2,end).') < 10
-            ballistic_envelope_smc = [ballistic_envelope_smc idx];
+            envelope_smc_mask(i) = true;
         end
     end
     if discrete_smc_trial.tout(end) == 30
         if norm(xi(10:11) - discrete_smc_trial.posout.Data(:,1:2,end).') < 10
-            ballistic_envelope_discrete_smc = [ballistic_envelope_discrete_smc idx];
+            envelope_dsmc_mask(i) = true;
         end
     end
 end
+ballistic_envelope_lqr = test_points(envelope_lqr_mask);
+ballistic_envelope_pid = test_points(envelope_pid_mask);
+ballistic_envelope_smc = test_points(envelope_smc_mask);
+ballistic_envelope_discrete_smc = test_points(envelope_dsmc_mask);
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -795,21 +843,19 @@ interp_step_smc_uncertainty_vel = interp1(step_out_smc_uncertainty.velout.Time, 
 interp_step_discrete_smc_uncertainty_vel = interp1(step_out_discrete_smc_uncertainty.velout.Time, permute(step_out_discrete_smc_uncertainty.velout.Data, [3 1 2]), step_time);
 interp_step_pid_uncertainty_vel = interp1(step_out_pid_uncertainty.velout.Time, permute(step_out_pid_uncertainty.velout.Data, [3 1 2]), step_time);
 
+mass_uncertain = [mL; m1; m1; m2; m2; m2; m2; m2; m3; m3];
+
 temp = sum(interp_step_lqr_uncertainty_vel.^2, 3);
-mass = [mL; m1; m1; m2; m2; m2; m2; m2; m3; m3];
-step_lqr_uncertainty_ke = 0.5*(temp.*(mass'));
+step_lqr_uncertainty_ke = 0.5*(temp.*(mass_uncertain'));
 
 temp = sum(interp_step_smc_uncertainty_vel.^2, 3);
-mass = [mL; m1; m1; m2; m2; m2; m2; m2; m3; m3];
-step_smc_uncertainty_ke = 0.5*m*(temp.*(mass'));
+step_smc_uncertainty_ke = 0.5*(temp.*(mass_uncertain'));
 
 temp = sum(interp_step_discrete_smc_uncertainty_vel.^2, 3);
-mass = [mL; m1; m1; m2; m2; m2; m2; m2; m3; m3];
-step_discrete_smc_uncertainty_ke = 0.5*m*(temp.*(mass'));
+step_discrete_smc_uncertainty_ke = 0.5*(temp.*(mass_uncertain'));
 
 temp = sum(interp_step_pid_uncertainty_vel.^2, 3);
-mass = [mL; m1; m1; m2; m2; m2; m2; m2; m3; m3];
-step_pid_uncertainty_ke = 0.5*m*(temp.*(mass'));
+step_pid_uncertainty_ke = 0.5*(temp.*(mass_uncertain'));
 
 step_lqr_uncertainty_min_distances = [];
 step_lqr_uncertainty_avg_distances = [];
@@ -2336,10 +2382,10 @@ for i=1:size(interp_step_smc_ballistic_pos, 1)
     [max_delta_discrete_smc,max_delta_discrete_smc_idx] = max(delta_discrete_smc);
     [max_delta_pid,max_delta_pid_idx] = max(delta_pid);
 
-    delta_lqr = max_delta_lqr / norm(squeeze(xf_lqr(1,max_delta_lqr_idx,:) - xi_lqr(1,max_delta_lqr_idx,:)));
-    delta_smc = max_delta_smc / norm(squeeze(xf_smc(1,max_delta_smc_idx,:) - xi_smc(1,max_delta_smc_idx,:)));
-    delta_discrete_smc = max_delta_discrete_smc / norm(squeeze(xf_discrete_smc(1,max_delta_discrete_smc_idx,:) - xi_discrete_smc(1,max_delta_discrete_smc_idx,:)));
-    delta_pid = max_delta_pid / norm(squeeze(xf_pid(1,max_delta_pid_idx,:) - xi_pid(1,max_delta_pid_idx,:)));
+    delta_lqr = max_delta_lqr / norm(squeeze(xf_lqr_ballistic(1,max_delta_lqr_idx,:) - xi_lqr_ballistic(1,max_delta_lqr_idx,:)));
+    delta_smc = max_delta_smc / norm(squeeze(xf_smc_ballistic(1,max_delta_smc_idx,:) - xi_smc_ballistic(1,max_delta_smc_idx,:)));
+    delta_discrete_smc = max_delta_discrete_smc / norm(squeeze(xf_discrete_smc_ballistic(1,max_delta_discrete_smc_idx,:) - xi_discrete_smc_ballistic(1,max_delta_discrete_smc_idx,:)));
+    delta_pid = max_delta_pid / norm(squeeze(xf_pid_ballistic(1,max_delta_pid_idx,:) - xi_pid_ballistic(1,max_delta_pid_idx,:)));
 
     if (delta_lqr <= 0.05 && ts_xf_lqr_ballistic == 0)
         ts_xf_lqr_ballistic = ballistic_time(i);
