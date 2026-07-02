@@ -1,4 +1,4 @@
-function u = dsmc_no_constraints(A, B, state, xd, x0) %#ok<INUSL>
+function u = dsmc_no_constraints(A, B, state, xd, x0, constants) %#ok<INUSL>
 persistent xk;
 persistent xkp1;
 persistent xk_d;
@@ -26,14 +26,15 @@ if abs(norm(xkp1_d - xd)) > 1e-9
     xkp1_d = xd;
 end
 
-dt = 1/50;
-g = 9.81;
-m = 0.8;
-Jxx = 1.8e-3; % kgm^2
-Jyy = 1.8e-3; % kgm^2
-Jzz = 1.5e-3; % kgm^2
-l = 0.2; % m
-Jmp = 1e-5; % kgm^2
+g   = constants.g;
+l   = constants.l;
+Jmp = constants.Jmp;
+Jxx = constants.Jxx;
+Jyy = constants.Jyy;
+Jzz = constants.Jzz;
+dt  = constants.dt;
+m   = constants.m_uncertain;
+
 K1 = 0.0001;
 K2 = 0.0001;
 K3 = 0.0001;
@@ -41,7 +42,7 @@ K4 = 0.0012;
 K5 = 0.0012;
 K6 = 0.0012;
 nuz = 7;
-nupsi = 7; 
+nupsi = 7;
 nu3 = 14;
 nu4 = 14;
 az = 6;
@@ -71,12 +72,12 @@ u_Mz = Jzz*(( -apsi*dxk(6) + (K6/Jzz)*dxk(6) ) + nupsi*spsik);
 
 a1 = 6*m/(u_T*cos(xk(6))); % 6
 a2 = 2*m/(u_T*cos(xk(6))); % 2
-a3 = 2; 
-a4 = 8; 
+a3 = 2;
+a4 = 8;
 a5 = -6*m/(u_T*cos(xk(4))*cos(xk(6))); % 6
 a6 = -2*m/(u_T*cos(xk(4))*cos(xk(6))); % 2
-a7 = 2; 
-a8 = 8; %
+a7 = 2;
+a8 = 8;
 
 sphik = a1*(dxk_d(2) - dxk(2)) + a2*(xk_d(2) - xk(2)) + a3*(dxk_d(4) - dxk(4)) + a4*(xk_d(4) - xk(4));
 sthetak = a5*(dxk_d(1) - dxk(1)) + a6*(xk_d(1) - xk(1)) + a7*(dxk_d(5) - dxk(5)) + a8*(xk_d(5) - xk(5));

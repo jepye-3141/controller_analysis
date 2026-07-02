@@ -1,4 +1,4 @@
-function u = dsmc_constraints(A, B, state, xd, x0) %#ok<INUSL>
+function u = dsmc_constraints(A, B, state, xd, x0, constants) %#ok<INUSL>
 % MATLAB_Function — Plan A+ augmented dSMC controller for symmetric quadrotor.
 %
 % Augments the user's existing discrete sliding mode controller (eqs 21,
@@ -33,7 +33,16 @@ function u = dsmc_constraints(A, B, state, xd, x0) %#ok<INUSL>
 %   rho = 1; W_s = W_xi = (1/2)*I  (tune per Plan A+ §11.2 if needed)
 
 %% ============== Persistent state ==================================
-persistent xk xkp1 xk_d xkp1_d ukm1 xi
+persistent xk xkp1 xk_d xkp1_d ukm1 xi TM_inv
+g   = constants.g;
+l   = constants.l;
+Jmp = constants.Jmp;
+Jxx = constants.Jxx;
+Jyy = constants.Jyy;
+Jzz = constants.Jzz;
+dt  = constants.dt;
+m   = constants.m_uncertain;
+saturation_on = constants.saturation_on;
 
 if isempty(xk)
     xk      = x0;
@@ -59,15 +68,6 @@ if abs(norm(xkp1_d - xd)) > 1e-9
 end
 
 %% ============== Parameters (Table I, Table IV) ====================
-dt   = 1/50;
-g    = 9.81;
-m    = 0.8;
-Jxx  = 1.8e-3;
-Jyy  = 1.8e-3;
-Jzz  = 1.5e-3;
-l    = 0.2;
-Jmp  = 1e-5;
-
 % Drag coefficients (Table IV)
 K1 = 0.0001;  K2 = 0.0001;  K3 = 0.0001;
 K4 = 0.0012;  K5 = 0.0012;  K6 = 0.0012;
@@ -95,16 +95,16 @@ d = 2;   % yaw torque coefficient
 %
 %   MAGIC NUMBERS — chosen for the user's quadrotor (m = 0.8 kg):
 %     Omega2_min = 0.0  : motors can spin to zero (typical ESC convention)
-%     Omega2_max = 1.0  : 4*b*Omega2_max = 20 N total thrust  =>  T/W = 2.55
+%     Omega2_max = 2.0  : 4*b*Omega2_max = 40 N total thrust  =>  T/W = 5.10
 %
 %   Hover-trim feasibility (Plan A+ condition C2):
-%     4*b*Omega2_max = 20 > m*g = 7.848  (PASSES; T/W > 1)
+%     4*b*Omega2_max = 40 > m*g = 7.848  (PASSES; T/W > 1)
 %   Hover-trim Omega^2 per rotor:
-%     Omega2_hover = m*g / (4*b) = 0.392  (inside [0, 1.0])
+%     Omega2_hover = m*g / (4*b) = 0.392  (inside [0, 2.0])
 %
 % Adjust these to match actual motor specifications when known.
 Omega2_min = 0.0;
-Omega2_max = 1.0;
+Omega2_max = 2;
 
 % Matched auxiliary-state contraction rate (Plan A+ §4.4):
 %   k_xi(alpha) = eta_alpha * dt   per channel
@@ -116,12 +116,15 @@ TM = [b   b   b   b;
       0  -b   0   b;
      -b   0   b   0;
       d  -d   d  -d];
+if isempty(TM_inv)
+    TM_inv = inv(TM);
+end
 
 %% ============== Recover Omega_r from previous (POST-SATURATION) u ==
 % ukm1 is the POST-SATURATION command from the previous tick (Plan A+
 % convention), so Omegas correspond to the actually-applied rotor speeds
 % — which is what's required for the gyroscopic-precession term.
-Omegas = inv(TM) * ukm1;                            %#ok<MINV>
+Omegas = TM_inv * ukm1;
 Omegas = real(sqrt(complex(Omegas)));
 Omegar = real(Omegas(1) - Omegas(2) + Omegas(3) - Omegas(4));
 
@@ -133,9 +136,12 @@ dxk_d = (xkp1_d - xk_d) / dt;   % zero for constant references
 szk   = az   * (xk_d(3) - xk(3)) + (dxk_d(3) - dxk(3));
 spsik = apsi * (xk_d(6) - xk(6)) + (dxk_d(6) - dxk(6));
 
-% User's existing clip on s_z and s_psi (stability/runaway prevention).
-% Applied BEFORE the auxiliary substitution per design choice — clips
-% the sliding-variable signal, not the modified one.
+% Clipping retained. Plan A+ theory says the auxiliary state xi should
+% absorb sustained tracking deficits, making this clip redundant; in
+% practice (2026-05-15 sweep diagnostic) disabling it caused the dSMC
+% deploy x cross-track x neighbor sweep to land zero successful
+% trajectories at any deploy point, even at dt=1/200. The transient
+% growth of s_z and s_psi before xi converges still needs the clip.
 szk   = min(szk,   2);  szk   = max(szk,   -2);
 spsik = min(spsik, 2);  spsik = max(spsik, -2);
 
@@ -161,6 +167,12 @@ u_Mz = Jzz * ((-apsi * dxk(6) + (K6/Jzz) * dxk(6)) + nupsi * tilde_spsik);
 %% ============== STEP 5: a_i from CURRENT-TICK COMMANDED u_T (eq 32) ====
 % Same convention as user's existing code (single-pass).
 % Plan A+ deficit-cancellation derivation requires this evaluation point.
+%
+% Caveat: a_i are evaluated at the COMMANDED u_T, not the post-saturation
+% bar u_T. Under deep thrust saturation, commanded u_T can be far from
+% feasible, making a_1, a_2, a_5, a_6 numerically erratic and degrading
+% the slowly-varying-D assumption that underpins the ISS bound
+% (dsmc_saturation.tex, "Slowly varying D_k" paragraph).
 a1 =  6 * m / (u_T * cos(xk(6)));
 a2 =  2 * m / (u_T * cos(xk(6)));
 a5 = -6 * m / (u_T * cos(xk(4)) * cos(xk(6)));
@@ -206,14 +218,20 @@ u_My = (Jyy / (l * a7)) * (-a5 * (g2_k * u_T - K1 * dxk(1)/m) - a6 * dxk(1) - ..
 %% ============== STEP 11: Form unconstrained u =======================
 u_unc = [u_T; u_Mx; u_My; u_Mz];
 
-%% ============== STEP 12: Priority-weighted allocation ===============
-% Plan A+ §3: closed-form sequential procedure in Omega^2 space.
-% Returns Omega2_star (post-allocation rotor speeds, unused here) and
-% u_bar (corresponding feasible thrust/moment command).
-[~, u_bar] = priority_weighted_allocate(u_unc, Omega2_min, Omega2_max, b, d);
-
-% Saturation deficit (drives auxiliary-state update)
-delta_u = u_unc - u_bar;
+%% ============== STEP 12: Priority-weighted allocation (optional) ====
+% When saturation_on, run Plan A+ §3 closed-form allocation in Omega^2
+% space and feed the resulting deficit into the auxiliary state. When
+% off, bypass allocation entirely: u_bar = u_unc, delta_u = 0, and xi
+% stays at its initialized zero. With xi == 0 the modified sliding
+% variables tilde_s collapse to s, making the OFF branch numerically
+% equivalent to dsmc_no_constraints.m.
+if saturation_on
+    [~, u_bar] = priority_weighted_allocate(u_unc, Omega2_min, Omega2_max, b, d);
+    delta_u    = u_unc - u_bar;
+else
+    u_bar   = u_unc;
+    delta_u = zeros(4, 1);
+end
 
 %% ============== STEP 13: Auxiliary-state update =====================
 % Per-channel scalar contraction:

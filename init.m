@@ -1,0 +1,1 @@
+constants_struct_info = Simulink.Bus.createObject(constants_struct);

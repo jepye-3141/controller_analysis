@@ -225,26 +225,21 @@ spiral_out_discrete_smc = sim("discrete_smc_swarm")
 %% Ballistic case
 env = aero_constants('std_atm.csv', 'Aerodynamic_Char_120mm_Mortar.xlsx');
 
-Vo_set = 100; % initial vel at muzzle exit in m/s
-el_0_set = 45; % vertical angle of departure in deg (pos up)
-az_0_set = 15;  % horizontal angle of departure in deg(pos to right)
-
-w_z0_set=1; % initial pitch rate in rad/s (pos nose up)
-w_y0_set=0.5; % initial transverse yaw rate in rad/s (pos for left yaw)
-
-alpha_0_set = 2; % exit elevation (deg)
-beta_0_set= -0.5; % exit azimuth (deg)
-
+launch.Vo      = 100;  % initial vel at muzzle exit in m/s
+launch.el      = 45;   % vertical angle of departure in deg (pos up)
+launch.az      = 15;   % horizontal angle of departure in deg (pos to right)
+launch.w_z0    = 1;    % initial pitch rate in rad/s (pos nose up)
+launch.w_y0    = 0.5;  % initial transverse yaw rate in rad/s (pos for left yaw)
+launch.alpha_0 = 2;    % exit elevation (deg)
+launch.beta_0  = -0.5; % exit azimuth (deg)
 % initial position of munition center of gravity (CG) wrt intertial frame
-x_0 = 0; % x-axis (m) - range direction
-y_0 = 0; % y-axis (m) - altitude
-z_0 = 0; % z-axis (m) - cross-range direction
+launch.x_0     = 0;    % x-axis (m) - range direction
+launch.y_0     = 0;    % y-axis (m) - altitude
+launch.z_0     = 0;    % z-axis (m) - cross-range direction
+launch.t_max   = 300;  % sim end time
+launch.p       = 0;    % initial spin rate in rad/s
 
-t_max = 300; % sim end time
-p = 0; % initial spin rate in rad/s
-
-ballistic_solution = eom2(t_max, Vo_set, el_0_set, az_0_set, w_z0_set, w_y0_set, ...
-    alpha_0_set, beta_0_set, p, x_0, y_0, z_0, env, false);
+ballistic_solution = eom2(launch, env, false);
 
 load_system("lqr_swarm_single")
 load_system("pid_redux_single")
@@ -275,33 +270,29 @@ step_out_discrete_smc_ballistic = sim("discrete_smc_swarm_single")
 %% Ballistic envelope testing
 env = aero_constants('std_atm.csv', 'Aerodynamic_Char_120mm_Mortar.xlsx');
 
-Vo_set = 100; % initial vel at muzzle exit in m/s
-el_0_set = 45; % vertical angle of departure in deg (pos up)
-az_0_set = 15;  % horizontal angle of departure in deg(pos to right)
-
-w_z0_set=1; % initial pitch rate in rad/s (pos nose up)
-w_y0_set=0.5; % initial transverse yaw rate in rad/s (pos for left yaw)
-
-alpha_0_set = 2; % exit elevation (deg)
-beta_0_set= -0.5; % exit azimuth (deg)
-
+launch.Vo      = 100;  % initial vel at muzzle exit in m/s
+launch.el      = 45;   % vertical angle of departure in deg (pos up)
+launch.az      = 15;   % horizontal angle of departure in deg (pos to right)
+launch.w_z0    = 1;    % initial pitch rate in rad/s (pos nose up)
+launch.w_y0    = 0.5;  % initial transverse yaw rate in rad/s (pos for left yaw)
+launch.alpha_0 = 2;    % exit elevation (deg)
+launch.beta_0  = -0.5; % exit azimuth (deg)
 % initial position of munition center of gravity (CG) wrt intertial frame
-x_0 = 0; % x-axis (m) - range direction
-y_0 = 0; % y-axis (m) - altitude
-z_0 = 0; % z-axis (m) - cross-range direction
+launch.x_0     = 0;    % x-axis (m) - range direction
+launch.y_0     = 0;    % y-axis (m) - altitude
+launch.z_0     = 0;    % z-axis (m) - cross-range direction
+launch.t_max   = 300;  % sim end time
+launch.p       = 0;    % initial spin rate in rad/s
 
-t_max = 300; % sim end time
-p = 0; % initial spin rate in rad/s
-
-ballistic_solution = eom2(t_max, Vo_set, el_0_set, az_0_set, w_z0_set, w_y0_set, ...
-    alpha_0_set, beta_0_set, p, x_0, y_0, z_0, env, false);
+ballistic_solution = eom2(launch, env, false);
 
 test_points = 1:10:size(ballistic_solution.trajectory, 1);
 n_test = size(test_points, 2);
 envelope_lqr_mask = false(1, n_test);
 envelope_pid_mask = false(1, n_test);
 envelope_smc_mask = false(1, n_test);
-envelope_dsmc_mask = false(1, n_test);
+envelope_dsmc_nosat_mask = false(1, n_test);
+envelope_dsmc_sat_mask   = false(1, n_test);
 for i = 1:size(test_points,2)
     idx = test_points(i);
     deploy_point = ballistic_solution.trajectory(idx, :).';
@@ -323,7 +314,10 @@ for i = 1:size(test_points,2)
     set_param("smc_swarm_single","StopTime","30", 'SimulationMode','Rapid')
     smc_trial = sim("smc_swarm_single")
     set_param("discrete_smc_swarm_single","StopTime","30", 'SimulationMode','Rapid')
-    discrete_smc_trial = sim("discrete_smc_swarm_single")
+    constants_struct.saturation_on = false;
+    discrete_smc_trial_nosat = sim("discrete_smc_swarm_single")
+    constants_struct.saturation_on = true;
+    discrete_smc_trial_sat   = sim("discrete_smc_swarm_single")
 
     if lqr_trial.tout(end) == 30
         if norm(xi(10:11) - lqr_trial.posout.Data(:,1:2,end).') < 10
@@ -340,27 +334,28 @@ for i = 1:size(test_points,2)
             envelope_smc_mask(i) = true;
         end
     end
-    if discrete_smc_trial.tout(end) == 30
-        if norm(xi(10:11) - discrete_smc_trial.posout.Data(:,1:2,end).') < 10
-            envelope_dsmc_mask(i) = true;
+    if discrete_smc_trial_nosat.tout(end) == 30
+        if norm(xi(10:11) - discrete_smc_trial_nosat.posout.Data(:,1:2,end).') < 10
+            envelope_dsmc_nosat_mask(i) = true;
+        end
+    end
+    if discrete_smc_trial_sat.tout(end) == 30
+        if norm(xi(10:11) - discrete_smc_trial_sat.posout.Data(:,1:2,end).') < 10
+            envelope_dsmc_sat_mask(i) = true;
         end
     end
 end
 ballistic_envelope_lqr = test_points(envelope_lqr_mask);
 ballistic_envelope_pid = test_points(envelope_pid_mask);
 ballistic_envelope_smc = test_points(envelope_smc_mask);
-ballistic_envelope_discrete_smc = test_points(envelope_dsmc_mask);
+ballistic_envelope_dsmc_nosat = test_points(envelope_dsmc_nosat_mask);
+ballistic_envelope_dsmc_sat   = test_points(envelope_dsmc_sat_mask);
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 close all;
-set(0, 'DefaultAxesFontName', 'Times');
-set(0, 'defaultUicontrolFontName', 'Times');
-set(0, 'defaultUitableFontName', 'Times');
-set(0, 'defaultAxesFontName', 'Times');
-set(0, 'defaultTextFontName', 'Times');
-set(0, 'defaultUipanelFontName', 'Times');
+set_default_fonts();
 
 set(0,'DefaultFigureVisible','on')
 set(gcf,'visible','on')
@@ -570,8 +565,8 @@ for i=1:1
 end
 
 
-exportgraphics(gcf, "figs/1_flight_path.png",ContentType="image", ...
-     Width=1200,Height=700)
+fontsize(gcf, 12, "points")
+export_figure("figs/1_flight_path", Width=2400, Height=1800)
 
 %% Desired Flight Paths
 step_cmd = step_out_smc.cmdout.Data;
@@ -648,10 +643,8 @@ for i=1:1
     view(-37.5, 30)
 end
 pbaspect([1 1 1])
-fontsize(gcf,32,"points")
 
-exportgraphics(gcf, "figs/2_flight_path_cmds.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/2_flight_path_cmds", Width=2000, Height=1600)
 
 %% Time Series Comparisons
 step_time = 0:0.1:50;
@@ -1106,386 +1099,370 @@ end
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(step_lqr_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_lqr_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, LQR step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(step_lqr_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_lqr_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 title("Avg euclidean distance between swarm members, LQR step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 clim([0, 4]);
 subplot(3, 1, 3)
-heatmap(step_lqr_max_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_lqr_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Max euclidean distance between swarm members, LQR step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/3_step_lqr_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/3_step_lqr_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(step_smc_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_smc_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, SMC step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(step_smc_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_smc_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, SMC step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(step_smc_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(step_smc_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, SMC step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/4_step_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/4_step_smc_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(step_discrete_smc_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_discrete_smc_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, dSMC step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(step_discrete_smc_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_discrete_smc_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, dSMC step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(step_discrete_smc_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(step_discrete_smc_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, dSMC step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/5_step_discrete_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/5_step_discrete_smc_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(step_pid_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_pid_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, PID step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(step_pid_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_pid_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, PID step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(step_pid_max_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_pid_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Max euclidean distance between swarm members, PID step response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/6_step_pid_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/6_step_pid_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(step_lqr_uncertainty_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_lqr_uncertainty_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, LQR step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(step_lqr_uncertainty_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_lqr_uncertainty_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, LQR step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(step_lqr_uncertainty_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(step_lqr_uncertainty_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, LQR step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/7_step_lqr_uncertainty_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/7_step_lqr_uncertainty_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(step_smc_uncertainty_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_smc_uncertainty_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, SMC step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(step_smc_uncertainty_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_smc_uncertainty_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, SMC step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(step_smc_uncertainty_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(step_smc_uncertainty_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, SMC step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/8_step_smc_uncertainty_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/8_step_smc_uncertainty_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(step_discrete_smc_uncertainty_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_discrete_smc_uncertainty_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, dSMC step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(step_discrete_smc_uncertainty_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_discrete_smc_uncertainty_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, dSMC step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(step_discrete_smc_uncertainty_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(step_discrete_smc_uncertainty_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, dSMC step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/9_step_discrete_smc_uncertainty_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/9_step_discrete_smc_uncertainty_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(step_pid_uncertainty_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_pid_uncertainty_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, PID step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(step_pid_uncertainty_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(step_pid_uncertainty_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, PID step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(step_pid_uncertainty_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(step_pid_uncertainty_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, PID step response w/ uncertainty")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/10_step_pid_uncertainty_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/10_step_pid_uncertainty_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(f8_lqr_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(f8_lqr_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, LQR figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(f8_lqr_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(f8_lqr_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, LQR figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(f8_lqr_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(f8_lqr_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, LQR figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/11_f8_lqr_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/11_f8_lqr_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(f8_smc_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(f8_smc_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, SMC figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(f8_smc_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(f8_smc_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, SMC figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(f8_smc_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(f8_smc_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, SMC figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/12_f8_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/12_f8_smc_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(f8_discrete_smc_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(f8_discrete_smc_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, dSMC figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(f8_discrete_smc_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(f8_discrete_smc_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, dSMC figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(f8_discrete_smc_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(f8_discrete_smc_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, dSMC figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/13_f8_discrete_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/13_f8_discrete_smc_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(f8_pid_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(f8_pid_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, PID figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(f8_pid_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(f8_pid_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, PID figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(f8_pid_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(f8_pid_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, PID figure-8 response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/14_f8_pid_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/14_f8_pid_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(spiral_lqr_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(spiral_lqr_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, LQR arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(spiral_lqr_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(spiral_lqr_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, LQR arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(spiral_lqr_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(spiral_lqr_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, LQR arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/15_spiral_lqr_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/15_spiral_lqr_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(spiral_smc_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(spiral_smc_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, SMC arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(spiral_smc_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(spiral_smc_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, SMC arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(spiral_smc_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(spiral_smc_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, SMC arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/16_spiral_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/16_spiral_smc_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(spiral_discrete_smc_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(spiral_discrete_smc_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, dSMC arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(spiral_discrete_smc_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(spiral_discrete_smc_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, dSMC arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(spiral_discrete_smc_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(spiral_discrete_smc_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, dSMC arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/17_spiral_discrete_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/17_spiral_discrete_smc_distances")
 
 figure
 hold on
 subplot(3, 1, 1)
-heatmap(spiral_pid_min_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(spiral_pid_min_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Min euclidean distance between swarm members, PID arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 2)
-heatmap(spiral_pid_avg_distances, "Colormap", hot, 'FontName', 'Times');
+heatmap(spiral_pid_avg_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14);
 clim([0, 4]);
 title("Avg euclidean distance between swarm members, PID arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 subplot(3, 1, 3)
-heatmap(spiral_pid_max_distances, "Colormap", hot, 'FontName', 'Times'); 
+heatmap(spiral_pid_max_distances, "Colormap", hot, 'FontName', 'Times', 'FontSize', 14); 
 clim([0, 4]);
 title("Max euclidean distance between swarm members, PID arithmetic spiral response")
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/18_spiral_pid_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/18_spiral_pid_distances")
 
 %% Delta-Distance Heatmaps
 initial_positions = [0 0 0;
@@ -1526,8 +1503,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/19_heatmap_step_lqr_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/19_heatmap_step_lqr_distances")
 
 figure
 hold on
@@ -1550,8 +1526,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/20_heatmap_step_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/20_heatmap_step_smc_distances")
 
 figure
 hold on
@@ -1574,8 +1549,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/21_heatmap_step_discrete_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/21_heatmap_step_discrete_smc_distances")
 
 figure
 hold on
@@ -1598,8 +1572,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/22_heatmap_step_pid_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/22_heatmap_step_pid_distances")
 
 figure
 hold on
@@ -1622,8 +1595,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/23_heatmap_step_lqr_uncertainty_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/23_heatmap_step_lqr_uncertainty_distances")
 
 figure
 hold on
@@ -1646,8 +1618,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/24_heatmap_step_smc_uncertainty_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/24_heatmap_step_smc_uncertainty_distances")
 
 figure
 hold on
@@ -1670,8 +1641,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/25_heatmap_step_discrete_smc_uncertainty_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/25_heatmap_step_discrete_smc_uncertainty_distances")
 
 figure
 hold on
@@ -1694,8 +1664,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/26_heatmap_step_pid_uncertainty_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/26_heatmap_step_pid_uncertainty_distances")
 
 figure
 hold on
@@ -1718,8 +1687,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/27_heatmap_f8_lqr_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/27_heatmap_f8_lqr_distances")
 
 figure
 hold on
@@ -1742,8 +1710,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/28_heatmap_f8_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/28_heatmap_f8_smc_distances")
 
 figure
 hold on
@@ -1766,8 +1733,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/29_heatmap_f8_discrete_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/29_heatmap_f8_discrete_smc_distances")
 
 figure
 hold on
@@ -1790,8 +1756,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/30_heatmap_f8_pid_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/30_heatmap_f8_pid_distances")
 
 figure
 hold on
@@ -1814,8 +1779,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/31_heatmap_spiral_lqr_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/31_heatmap_spiral_lqr_distances")
 
 figure
 hold on
@@ -1838,8 +1802,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/32_heatmap_spiral_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/32_heatmap_spiral_smc_distances")
 
 figure
 hold on
@@ -1862,8 +1825,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/33_heatmap_spiral_discrete_smc_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/33_heatmap_spiral_discrete_smc_distances")
 
 figure
 hold on
@@ -1886,8 +1848,7 @@ title("Difference between max euclidean distance between drones, and nominal sep
 xlabel("Drone index (1 is leader)")
 ylabel("Drone index (1 is leader)")
 
-exportgraphics(gcf, "figs/34_heatmap_spiral_pid_distances.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/34_heatmap_spiral_pid_distances")
 
 %% Score Plots
 step_lqr_min_delta_score = norm(step_lqr_min_distances-ideal_distances)/norm(step_lqr_min_distances+ideal_distances);
@@ -1958,11 +1919,11 @@ rowlabels = {'min separation', 'average separation', 'max separation'};
 collabels = {'LQR', 'cSMC', 'dSMC', 'PID'};
 figure
 subplot(2,1,1)
-h1 = heatmap(collabels, rowlabels, 100*(1-step_score_mat), 'FontSize', 32, 'FontName', 'Times')
+h1 = heatmap(collabels, rowlabels, 100*(1-step_score_mat), 'FontSize', 16, 'FontName', 'Times')
 title("Step impulse nominal vs actual separation % similarity")
 h1.CellLabelFormat = '%.2f %%'; 
 subplot(2,1,2)
-h2 = heatmap(collabels, rowlabels, 100*(1-step_uncertainty_score_mat), 'FontSize', 32, 'FontName', 'Times')
+h2 = heatmap(collabels, rowlabels, 100*(1-step_uncertainty_score_mat), 'FontSize', 16, 'FontName', 'Times')
 title("Step impulse with uncertainty nominal vs actual separation % similarity")
 h2.CellLabelFormat = '%.2f %%'; 
 % subplot(2,2,3)
@@ -1971,8 +1932,7 @@ h2.CellLabelFormat = '%.2f %%';
 % subplot(2,2,4)
 % h4 = heatmap(collabels, rowlabels, 1-spiral_score_mat, 'FontSize', 12, 'FontName', 'Times')
 % title("Arithmetic spiral nominal vs actual separation % similarity")
-exportgraphics(gcf,"figs/35_score_table.png",ContentType="image", ...
-     Width=1000,Height=700)
+export_figure("figs/35_score_table")
 
 %% Kinetic Energy Plots
 figure
@@ -2216,8 +2176,8 @@ for i=1:1
     ylabel("Kinetic energy (J)")
 end
 legend("Leader")
-exportgraphics(gcf, "figs/36_kinetic_energy.png",ContentType="image", ...
-     Width=1000,Height=700)
+fontsize(gcf, 9, "points")
+export_figure("figs/36_kinetic_energy", Width=2400, Height=1800)
 
 %% Kinetic Energy Scores
 max_step_lqr_ke                         = max(trapz(step_time, step_lqr_ke(:,1)));
@@ -2266,13 +2226,13 @@ end
 figure
 conlabels = {'LQR', 'cSMC', 'dSMC', 'PID'};
 subplot(3,1,1)
-h1 = heatmap(conlabels, conlabels, ke_scores_step, "Colormap", jet, 'FontSize', 32, 'FontName', 'Times')
+h1 = heatmap(conlabels, conlabels, ke_scores_step, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
 title("Relative % integrated KE over time, step impulse")
 h1.CellLabelFormat = '%.2f %%'; 
 clim([-50 50])
 
 subplot(3,1,2)
-h2 = heatmap(conlabels, conlabels, ke_scores_uncertainty, "Colormap", jet, 'FontSize', 32, 'FontName', 'Times')
+h2 = heatmap(conlabels, conlabels, ke_scores_uncertainty, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
 title("Relative % integrated KE over time, step w/ uncertainty")
 h2.CellLabelFormat = '%.2f %%'; 
 clim([-50 50])
@@ -2290,12 +2250,11 @@ clim([-50 50])
 % clim([-50 50])
 
 subplot(3,1,3)
-h3 = heatmap(conlabels, conlabels, ke_scores_ballistic, "Colormap", jet, 'FontSize', 32, 'FontName', 'Times')
+h3 = heatmap(conlabels, conlabels, ke_scores_ballistic, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
 title("Relative % integrated KE over time, ballistic step")
 h3.CellLabelFormat = '%.2f %%'; 
 clim([-50 50])
-exportgraphics(gcf, "figs/37_kinetic_energy_scores.png",ContentType="image", ...
-     Width=1000,Height=700,Padding=10)
+export_figure("figs/37_kinetic_energy_scores")
 
 %% Difference in uncertain trajectories
 norm(interp_step_lqr_uncertainty_pos - interp_step_lqr_pos, 'fro')
@@ -2463,28 +2422,27 @@ end
 figure
 conlabels = {'LQR', 'cSMC', 'dSMC', 'PID'};
 subplot(3,1,1)
-h1 = heatmap(conlabels, conlabels, ts_score, "Colormap", jet, 'FontSize', 32, 'FontName', 'Times')
+h1 = heatmap(conlabels, conlabels, ts_score, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
 title("Relative % 99% settling time, step impulse")
 h1.CellLabelFormat = '%.1f %%'; 
 clim([-50 50])
 
 subplot(3,1,2)
-h2 = heatmap(conlabels, conlabels, ts_score_uncertainty, "Colormap", jet, 'FontSize', 32, 'FontName', 'Times')
+h2 = heatmap(conlabels, conlabels, ts_score_uncertainty, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
 title("Relative % 99% settling time, step impulse with uncertainty")
 h2.CellLabelFormat = '%.1f %%'; 
 clim([-50 50])
 
 subplot(3,1,3)
-h3 = heatmap(conlabels, conlabels, ts_score_ballistic, "Colormap", jet, 'FontSize', 32, 'FontName', 'Times')
+h3 = heatmap(conlabels, conlabels, ts_score_ballistic, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
 title("Relative % 99% settling time, ballistic")
 h3.CellLabelFormat = '%.1f %%'; 
 clim([-50 50])
-exportgraphics(gcf, "figs/38_settling_time_scores.png",ContentType="image", ...
-     Width=1000,Height=700,Padding=10)
+export_figure("figs/38_settling_time_scores")
 
 %%
 figure
-ax(1) = subplot(2,2,1)
+ax(1) = subplot(2,3,1)
 axis equal
 title("LQR")
 grid on
@@ -2508,7 +2466,7 @@ xticks(0:400:800)
 yticks(-400:400:0)
 zticks(0:400:400)
 
-ax(2) = subplot(2,2,2)
+ax(2) = subplot(2,3,2)
 axis equal
 title("PID")
 grid on
@@ -2532,7 +2490,7 @@ xticks(0:400:800)
 yticks(-400:400:0)
 zticks(0:400:400)
 
-ax(3) = subplot(2,2,3)
+ax(3) = subplot(2,3,3)
 axis equal
 title("cSMC")
 grid on
@@ -2556,9 +2514,9 @@ xticks(0:400:800)
 yticks(-400:400:0)
 zticks(0:400:400)
 
-ax(4) = subplot(2,2,4)
+ax(4) = subplot(2,3,4)
 axis equal
-title("dSMC")
+title("dSMC (no control constraints)")
 grid on
 hold on
 plot3(ballistic_solution.trajectory(1:end,10),ballistic_solution.trajectory(1:end,11),ballistic_solution.trajectory(1:end,12), '-b', 'LineWidth',2)
@@ -2568,8 +2526,8 @@ for i=1:size(test_points,2)
     deploy_point = ballistic_solution.trajectory(idx, :).';
     rot0 = deg2rad(deploy_point(13:15));
     x0 = deploy_point(10:12);
-    
-    if ismember(idx, ballistic_envelope_discrete_smc)
+
+    if ismember(idx, ballistic_envelope_dsmc_nosat)
         plot3(x0(1), x0(2), x0(3), 'og', 'MarkerFaceColor', 'green')
     else
         plot3(x0(1), x0(2), x0(3), 'or', 'MarkerFaceColor', 'red')
@@ -2580,13 +2538,46 @@ xticks(0:400:800)
 yticks(-400:400:0)
 zticks(0:400:400)
 
+ax(5) = subplot(2,3,5)
+axis equal
+title("dSMC (saturated control effort)")
+grid on
+hold on
+plot3(ballistic_solution.trajectory(1:end,10),ballistic_solution.trajectory(1:end,11),ballistic_solution.trajectory(1:end,12), '-b', 'LineWidth',2)
+for i=1:size(test_points,2)
+    idx = test_points(i);
+
+    deploy_point = ballistic_solution.trajectory(idx, :).';
+    rot0 = deg2rad(deploy_point(13:15));
+    x0 = deploy_point(10:12);
+
+    if ismember(idx, ballistic_envelope_dsmc_sat)
+        plot3(x0(1), x0(2), x0(3), 'og', 'MarkerFaceColor', 'green')
+    else
+        plot3(x0(1), x0(2), x0(3), 'or', 'MarkerFaceColor', 'red')
+    end
+end
+view(3)
+xticks(0:400:800)
+yticks(-400:400:0)
+zticks(0:400:400)
+
+% Spread bottom row across full figure width: center ax(4) between top cols 1-2
+% and ax(5) between top cols 2-3 so their long titles no longer overlap.
+p1 = ax(1).Position; p2 = ax(2).Position; p3 = ax(3).Position;
+ax(4).Position(1) = (p1(1) + p2(1))/2;
+ax(5).Position(1) = (p2(1) + p3(1))/2;
+
+% Drop the top row so the sgtitle has breathing room above subplot titles.
+for k = 1:3
+    ax(k).Position(2) = ax(k).Position(2) - 0.04;
+end
+
 linkaxes(ax, "xyz")
 
-sgtitle("Ballistic trajectory stabilization envelopes", 'FontSize', 48, 'FontWeight', 'bold')
+sgtitle("Ballistic trajectory stabilization envelopes", 'FontSize', 20, 'FontWeight', 'bold')
 
-fontsize(gcf,24,"points")
-exportgraphics(gcf, "figs/39_ballistic_envelope.png",ContentType="image", ...
-     Width=1000,Height=500)
+export_figure("figs/39_ballistic_envelope", Width=3000, Height=1200)
 
 %%
-save("analysis_log.mat")
+save("logs/analysis_log.mat")
