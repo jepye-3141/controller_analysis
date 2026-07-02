@@ -15,3 +15,10 @@ slprj/
 
 # macOS finder metadata
 .DS_Store
+
+# Regenerable simulation logs and outputs (large; kept local)
+logs/
+run_logs/
+
+# Local design materials (not part of the codebase)
+design work/
