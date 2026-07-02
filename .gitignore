@@ -1,0 +1,17 @@
+# Documentation (generated, not tracked)
+docs/
+docs/**
+CLAUDE.md
+
+# Ongoing research materials
+ATLIS Ongoing Research/
+ATLIS Ongoing Research/**
+.gitignore
+Ballistics_Simulation-master
+
+# Simulink build cache (regenerable on next model run)
+slprj/
+*.slxc
+
+# macOS finder metadata
+.DS_Store
