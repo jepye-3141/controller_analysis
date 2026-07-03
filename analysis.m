@@ -315,35 +315,45 @@ for i = 1:size(test_points,2)
     smc_trial = sim("smc_swarm_single")
     set_param("discrete_smc_swarm_single","StopTime","30", 'SimulationMode','Rapid')
     constants_struct.saturation_on = false;
+    constants_struct.unconstrained = true;    % nosat arm: canonical dsmc_no_constraints (no motor limits)
     discrete_smc_trial_nosat = sim("discrete_smc_swarm_single")
     constants_struct.saturation_on = true;
+    constants_struct.unconstrained = false;   % sat arm: Plan A+ handler (+ per-rotor clip)
     discrete_smc_trial_sat   = sim("discrete_smc_swarm_single")
 
-    if lqr_trial.tout(end) == 30
-        if norm(xi(10:11) - lqr_trial.posout.Data(:,1:2,end).') < 10
-            envelope_lqr_mask(i) = true;
-        end
-    end
-    if pid_trial.tout(end) == 30
-        if norm(xi(10:11) - pid_trial.posout.Data(:,1:2,end).') < 10
-            envelope_pid_mask(i) = true;
-        end
-    end
-    if smc_trial.tout(end) == 30
-        if norm(xi(10:11) - smc_trial.posout.Data(:,1:2,end).') < 10
-            envelope_smc_mask(i) = true;
-        end
-    end
-    if discrete_smc_trial_nosat.tout(end) == 30
-        if norm(xi(10:11) - discrete_smc_trial_nosat.posout.Data(:,1:2,end).') < 10
-            envelope_dsmc_nosat_mask(i) = true;
-        end
-    end
-    if discrete_smc_trial_sat.tout(end) == 30
-        if norm(xi(10:11) - discrete_smc_trial_sat.posout.Data(:,1:2,end).') < 10
-            envelope_dsmc_sat_mask(i) = true;
-        end
-    end
+    % Post-processing success criterion (eq:ballistic-success) via
+    % ballistic_success: full 30 s (blowup guard never tripped) + final XY
+    % within 10 m of deploy + velocity ratio <= 2 + rotation-rate ratio
+    % <= 2, all over the whole trace. rotvelout logs the plant's
+    % Euler-angle rates [thetadot phidot psidot] (system_dynamics.m:44-46)
+    % -- the same signal the termination charts norm. Its Data shape
+    % differs per model ([3x1xT] vs [Tx3]), hence the squeeze+transpose.
+    v0_norm = norm(xi(1:3));
+    rot_lqr = squeeze(lqr_trial.rotvelout.Data);
+    if size(rot_lqr, 2) ~= 3, rot_lqr = rot_lqr.'; end
+    rot_pid = squeeze(pid_trial.rotvelout.Data);
+    if size(rot_pid, 2) ~= 3, rot_pid = rot_pid.'; end
+    rot_smc = squeeze(smc_trial.rotvelout.Data);
+    if size(rot_smc, 2) ~= 3, rot_smc = rot_smc.'; end
+    rot_dsmc_nosat = squeeze(discrete_smc_trial_nosat.rotvelout.Data);
+    if size(rot_dsmc_nosat, 2) ~= 3, rot_dsmc_nosat = rot_dsmc_nosat.'; end
+    rot_dsmc_sat = squeeze(discrete_smc_trial_sat.rotvelout.Data);
+    if size(rot_dsmc_sat, 2) ~= 3, rot_dsmc_sat = rot_dsmc_sat.'; end
+    envelope_lqr_mask(i) = ballistic_success(lqr_trial.posout.Time, ...
+        squeeze(lqr_trial.posout.Data(1,:,:)).', squeeze(lqr_trial.velout.Data(1,:,:)).', ...
+        xi(10:11), v0_norm, 30, RotVel=rot_lqr);
+    envelope_pid_mask(i) = ballistic_success(pid_trial.posout.Time, ...
+        squeeze(pid_trial.posout.Data(1,:,:)).', squeeze(pid_trial.velout.Data(1,:,:)).', ...
+        xi(10:11), v0_norm, 30, RotVel=rot_pid);
+    envelope_smc_mask(i) = ballistic_success(smc_trial.posout.Time, ...
+        squeeze(smc_trial.posout.Data(1,:,:)).', squeeze(smc_trial.velout.Data(1,:,:)).', ...
+        xi(10:11), v0_norm, 30, RotVel=rot_smc);
+    envelope_dsmc_nosat_mask(i) = ballistic_success(discrete_smc_trial_nosat.posout.Time, ...
+        squeeze(discrete_smc_trial_nosat.posout.Data(1,:,:)).', squeeze(discrete_smc_trial_nosat.velout.Data(1,:,:)).', ...
+        xi(10:11), v0_norm, 30, RotVel=rot_dsmc_nosat);
+    envelope_dsmc_sat_mask(i) = ballistic_success(discrete_smc_trial_sat.posout.Time, ...
+        squeeze(discrete_smc_trial_sat.posout.Data(1,:,:)).', squeeze(discrete_smc_trial_sat.velout.Data(1,:,:)).', ...
+        xi(10:11), v0_norm, 30, RotVel=rot_dsmc_sat);
 end
 ballistic_envelope_lqr = test_points(envelope_lqr_mask);
 ballistic_envelope_pid = test_points(envelope_pid_mask);

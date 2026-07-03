@@ -1,0 +1,125 @@
+function [success, info] = ballistic_success(t, pos, vel, target_xy, v0_norm, expected_T, opts)
+% ballistic_success  Post-processing success criterion for STABILIZE trials.
+%
+% Configurable implementation of the paper's stabilization/landing success
+% criterion (eq:ballistic-success), applied to logged sim data AFTER the
+% run. The in-model termination chart is deliberately NOT the success
+% criterion -- it is a pure numerical-blowup guard (norms >= 1e5) whose only
+% job is to stop destabilized sims early; a guard-stopped trial simply
+% fails condition (a) below.
+%
+%   success = (a) && (b) && (c) && (d), where
+%     (a) duration:  t(end) >= expected_T - 1e-6   (guard never tripped)
+%     (b) position:  ||pos(end,1:2)' - target_xy|| <= ReachTol  (final time)
+%     (c) velocity:  max_t ||vel(t,:)|| <= VelRatioMax * v0_norm
+%                    (every logged sample; skipped when vel is empty)
+%     (d) rotation:  max_{t > RotGraceT} ||RotVel(t,:)|| <= RotRatioMax * RotRefNorm
+%                    (skipped when RotVel is empty. The single models log
+%                    rotvelout = the plant's Euler-angle rates
+%                    [thetadot phidot psidot] -- the same signal the
+%                    termination charts norm. The first RotGraceT seconds
+%                    are exempt: deployment hands the vehicle over tumbling,
+%                    so early exceedances reflect the ballistic-separation
+%                    transient, not the controller. Empirically all sweep
+%                    violations start by t~=0.06 s and none persist past
+%                    3.8 s; W=1 s excludes the arrest transient only.)
+%
+% Inputs:
+%   t          Tx1 time vector of the logged series
+%   pos        Tx3 (or Tx>=2) leader position trace
+%   vel        Tx3 leader velocity trace; pass [] to skip condition (c)
+%   target_xy  target horizontal position (first two elements used)
+%   v0_norm    norm of the deployment velocity (frame-invariant), > 0
+%   expected_T configured StopTime of the trial (s)
+%
+% Options (name-value):
+%   ReachTol    = 10                  final-position tolerance (m)
+%   VelRatioMax = 2                   bound on ||v_t|| / ||v_0||
+%   RotRatioMax = 2                   bound on ||w_t|| / RotRefNorm
+%   RotRefNorm  = norm([pi; pi; pi])  reference rate magnitude (rad/s)
+%   RotGraceT   = 1                   grace window (s): rotation bound is
+%                                     evaluated only for t > RotGraceT
+%   RotVel      = []                  Tx3 rate trace on the same time grid
+%                                     as t, when available
+%
+% Outputs:
+%   success    logical
+%   info       struct with per-condition flags (duration_ok, position_ok,
+%              velocity_ok, rotation_ok), *_checked flags marking skipped
+%              conditions, and the measured extrema (t_end, final_miss,
+%              max_speed[_ratio], max_rot[_ratio]).
+
+arguments
+    t (:,1) double
+    pos (:,:) double
+    vel double
+    target_xy (:,1) double
+    v0_norm (1,1) double {mustBePositive}
+    expected_T (1,1) double {mustBePositive}
+    opts.ReachTol (1,1) double = 10
+    opts.VelRatioMax (1,1) double = 2
+    opts.RotRatioMax (1,1) double = 2
+    opts.RotRefNorm (1,1) double = norm([pi; pi; pi])
+    opts.RotGraceT (1,1) double {mustBeNonnegative} = 1
+    opts.RotVel double = []
+end
+
+info = struct();
+
+% (a) full duration -- an early stop means the blowup guard fired
+info.t_end = t(end);
+info.duration_ok = t(end) >= expected_T - 1e-6;
+
+% (b) final horizontal position within tolerance
+info.final_miss = norm(pos(end, 1:2).' - target_xy(1:2));
+info.position_ok = info.final_miss <= opts.ReachTol;
+
+% (c) velocity ratio over the whole trace
+info.velocity_checked = ~isempty(vel);
+if info.velocity_checked
+    info.max_speed = max(vecnorm(vel(:, 1:3), 2, 2));
+    info.max_speed_ratio = info.max_speed / v0_norm;
+    info.velocity_ok = info.max_speed_ratio <= opts.VelRatioMax;
+else
+    info.max_speed = NaN;
+    info.max_speed_ratio = NaN;
+    info.velocity_ok = true;
+end
+
+% (d) rotation-rate ratio after the grace window (when rates are logged).
+% max_rot/max_rot_ratio report the whole trace for diagnostics; the
+% criterion uses the post-window extremum, exempting the ballistic-
+% separation arrest transient. A trial with no samples after the window
+% passes (d) vacuously -- it fails (a) anyway.
+info.rotation_checked = ~isempty(opts.RotVel);
+info.rot_grace_T = opts.RotGraceT;
+if info.rotation_checked
+    assert(size(opts.RotVel, 1) == numel(t), ...
+        'ballistic_success:rotvel_grid', ...
+        'RotVel has %d rows but t has %d samples -- traces must share a grid', ...
+        size(opts.RotVel, 1), numel(t));
+    rot_norms = vecnorm(opts.RotVel(:, 1:3), 2, 2);
+    info.max_rot = max(rot_norms);
+    info.max_rot_ratio = info.max_rot / opts.RotRefNorm;
+    post = rot_norms(t > opts.RotGraceT);
+    if isempty(post)
+        info.max_rot_post = NaN;
+        info.max_rot_post_ratio = NaN;
+        info.rotation_ok = true;
+    else
+        info.max_rot_post = max(post);
+        info.max_rot_post_ratio = info.max_rot_post / opts.RotRefNorm;
+        info.rotation_ok = info.max_rot_post_ratio <= opts.RotRatioMax;
+    end
+else
+    info.max_rot = NaN;
+    info.max_rot_ratio = NaN;
+    info.max_rot_post = NaN;
+    info.max_rot_post_ratio = NaN;
+    info.rotation_ok = true;
+end
+
+success = info.duration_ok && info.position_ok && info.velocity_ok && info.rotation_ok;
+info.success = success;
+
+end

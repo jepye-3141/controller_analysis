@@ -16,6 +16,13 @@ function out = sweep_landing_centroid(traj_params, visualize)
 %   .radial_profile      r_bins, mean_ratio, peak_ratio, half_radius
 %   .ballistic_solution  full mortar struct
 %   .n_errored           parsim trials whose ErrorMessage was non-empty
+%
+% Per-trial success ('stable') is scored post-hoc by ballistic_success:
+% full duration (blowup guard never tripped) + final XY within reach_tol
+% + velocity ratio <= 2 + rotation-rate ratio <= 2, all over the whole
+% trace. The rotation trace is the model's rotvelout (plant Euler-angle
+% rates -- the same signal the termination chart norms). Per-trial
+% diagnostics land in results(i,k,nb).criteria.
 
 if nargin < 2
     visualize = false;
@@ -127,6 +134,7 @@ results = repmat(struct( ...
     'target_deploy_idx', NaN, ...
     'time_to_land',      NaN, ...
     'stable',            false, ...
+    'criteria',          [], ...
     'trajectory',        []), n_deploy, n_ct, n_nb);
 
 % Pre-pass: build a Simulink.SimulationInput per valid (i,k,nb) trial,
@@ -230,6 +238,11 @@ for ptr = 1:length(sim_outputs)
     t_trial    = out_sim.posout.Time;
     pos_trial  = squeeze(out_sim.posout.Data).';
     vel_trial  = squeeze(out_sim.velout.Data).';
+    % rotvelout = plant Euler-angle rates [thetadot phidot psidot], the
+    % signal the termination chart norms; logged shape varies ([3x1xT]
+    % vs [Tx3]), hence the squeeze+transpose normalization.
+    rot_trial  = squeeze(out_sim.rotvelout.Data);
+    if size(rot_trial, 2) ~= 3, rot_trial = rot_trial.'; end
     ctrl_raw   = squeeze(out_sim.ctrlout.Data).';
     % Zero-pad ctrl at the start to match t_trial length (sim delay
     % means ctrlout may have fewer samples than posout).
@@ -240,12 +253,12 @@ for ptr = 1:length(sim_outputs)
         ctrl_trial = ctrl_raw;
     end
 
-    stable = false;
-    if t_trial(end) == sim_time
-        if norm(meta.xf(1:2) - pos_trial(end, 1:2).') < reach_tol
-            stable = true;
-        end
-    end
+    % Post-processing success criterion (paper eq:ballistic-success):
+    % full duration + final-XY tolerance + velocity ratio + rotation-rate
+    % ratio, all over the whole trace.
+    [stable, crit] = ballistic_success(t_trial, pos_trial, vel_trial, ...
+        meta.xf(1:2), norm(deploy_vel_earth(:, meta.i)), sim_time, ...
+        ReachTol=reach_tol, RotVel=rot_trial);
 
     dist_to_target = vecnorm(pos_trial - meta.xf.', 2, 2);
     speed          = vecnorm(vel_trial, 2, 2);
@@ -259,11 +272,13 @@ for ptr = 1:length(sim_outputs)
 
     results(meta.i, meta.k, meta.nb).time_to_land = time_to_land;
     results(meta.i, meta.k, meta.nb).stable       = stable;
+    results(meta.i, meta.k, meta.nb).criteria     = crit;
     results(meta.i, meta.k, meta.nb).trajectory   = struct( ...
-        'time', t_trial, ...
-        'pos',  pos_trial, ...
-        'vel',  vel_trial, ...
-        'ctrl', ctrl_trial);
+        'time',   t_trial, ...
+        'pos',    pos_trial, ...
+        'vel',    vel_trial, ...
+        'rotvel', rot_trial, ...
+        'ctrl',   ctrl_trial);
 end
 
 err_frac = n_errored / max(length(sim_outputs), 1);
@@ -306,21 +321,35 @@ p_centroid = 2;
 W = max(Rg, 0).^p_centroid;
 W(isnan(Rg)) = 0;
 tot_w = sum(W(:));
-assert(tot_w > 0, 'sweep_landing_centroid: heatmap has no positive reachability; centroid undefined');
-cx = sum(Xg(:) .* W(:)) / tot_w;
-cy = sum(Yg(:) .* W(:)) / tot_w;
+if tot_w > 0
+    cx = sum(Xg(:) .* W(:)) / tot_w;
+    cy = sum(Yg(:) .* W(:)) / tot_w;
+    assert(cx >= min(land_x_flat) - 1e-6 && cx <= max(land_x_flat) + 1e-6, ...
+        'sweep_landing_centroid: centroid x = %.2f outside grid [%.2f, %.2f]', ...
+        cx, min(land_x_flat), max(land_x_flat));
+    assert(cy >= min(land_y_flat) - 1e-6 && cy <= max(land_y_flat) + 1e-6, ...
+        'sweep_landing_centroid: centroid y = %.2f outside grid [%.2f, %.2f]', ...
+        cy, min(land_y_flat), max(land_y_flat));
+else
+    % Zero-reachability sweep (a legitimate outcome, e.g. the naive
+    % per-rotor-clipped baseline): the power-weighted centroid is
+    % undefined. Degrade gracefully -- keep NaN centroid, still save the
+    % log and render figures (NaN points are silently skipped by plot).
+    warning('sweep_landing_centroid:zero_reachability', ...
+        'no trial satisfied the success criterion; centroid and half_radius are NaN');
+    cx = NaN; cy = NaN;
+end
 cz = 0;
-assert(cx >= min(land_x_flat) - 1e-6 && cx <= max(land_x_flat) + 1e-6, ...
-    'sweep_landing_centroid: centroid x = %.2f outside grid [%.2f, %.2f]', ...
-    cx, min(land_x_flat), max(land_x_flat));
-assert(cy >= min(land_y_flat) - 1e-6 && cy <= max(land_y_flat) + 1e-6, ...
-    'sweep_landing_centroid: centroid y = %.2f outside grid [%.2f, %.2f]', ...
-    cy, min(land_y_flat), max(land_y_flat));
 fprintf('centroid (p=%d): x = %.2f m, y = %.2f m\n', p_centroid, cx, cy);
 
 %% Radial reachability profile around centroid
 n_bins  = 20;
-r_grid  = sqrt((Xg(:) - cx).^2 + (Yg(:) - cy).^2);
+if tot_w > 0
+    r_grid = sqrt((Xg(:) - cx).^2 + (Yg(:) - cy).^2);
+else
+    % All-zero profile: bin about the grid center so r_bins stay finite.
+    r_grid = sqrt((Xg(:) - mean(Xg(:))).^2 + (Yg(:) - mean(Yg(:))).^2);
+end
 r_edges = linspace(0, max(r_grid), n_bins + 1);
 r_bins_c = (r_edges(1:end-1) + r_edges(2:end)) / 2;
 mean_ratio = nan(1, n_bins);
@@ -334,11 +363,15 @@ for b = 1:n_bins
     end
 end
 [peak_ratio, peak_b] = max(mean_ratio, [], 'omitnan');
-half_offset = find(mean_ratio(peak_b:end) <= 0.5*peak_ratio, 1, 'first');
-if isempty(half_offset)
-    half_radius = NaN;
+if isnan(peak_ratio) || peak_ratio <= 0
+    half_radius = NaN;   % no reachable region -> half-reach radius undefined
 else
-    half_radius = r_bins_c(peak_b - 1 + half_offset);
+    half_offset = find(mean_ratio(peak_b:end) <= 0.5*peak_ratio, 1, 'first');
+    if isempty(half_offset)
+        half_radius = NaN;
+    else
+        half_radius = r_bins_c(peak_b - 1 + half_offset);
+    end
 end
 
 radial_profile = struct( ...

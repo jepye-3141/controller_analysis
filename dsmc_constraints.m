@@ -34,6 +34,17 @@ function u = dsmc_constraints(A, B, state, xd, x0, constants) %#ok<INUSL>
 
 %% ============== Persistent state ==================================
 persistent xk xkp1 xk_d xkp1_d ukm1 xi TM_inv
+
+%% ============== Mode dispatch =====================================
+% constants.unconstrained == true bypasses this controller entirely and
+% delegates to the canonical unconstrained baseline (no allocation, no
+% per-rotor clip, no auxiliary state). Used by the analysis.m envelope
+% "nosat" arm; all saturation-comparison paths leave this false.
+if constants.unconstrained
+    u = dsmc_no_constraints(A, B, state, xd, x0, constants);
+    return
+end
+
 g   = constants.g;
 l   = constants.l;
 Jmp = constants.Jmp;
@@ -221,10 +232,12 @@ u_unc = [u_T; u_Mx; u_My; u_Mz];
 %% ============== STEP 12: Priority-weighted allocation (optional) ====
 % When saturation_on, run Plan A+ §3 closed-form allocation in Omega^2
 % space and feed the resulting deficit into the auxiliary state. When
-% off, bypass allocation entirely: u_bar = u_unc, delta_u = 0, and xi
-% stays at its initialized zero. With xi == 0 the modified sliding
-% variables tilde_s collapse to s, making the OFF branch numerically
-% equivalent to dsmc_no_constraints.m.
+% off, bypass allocation and anti-windup: delta_u = 0 and xi stays at
+% its initialized zero, so tilde_s collapses to s and the control laws
+% match dsmc_no_constraints.m; the final command still passes through
+% the hard per-rotor clip below (STEP 12b), making the OFF branch the
+% naive "per-rotor clipping" baseline. (dsmc_no_constraints.m itself
+% remains unclipped -- the truly unconstrained reference.)
 if saturation_on
     [~, u_bar] = priority_weighted_allocate(u_unc, Omega2_min, Omega2_max, b, d);
     delta_u    = u_unc - u_bar;
@@ -232,6 +245,19 @@ else
     u_bar   = u_unc;
     delta_u = zeros(4, 1);
 end
+
+%% ============== STEP 12b: Hard per-rotor clip (both branches) =======
+% Actuator-limit model: mix the final command into Omega^2 space, clamp
+% each rotor to [Omega2_min, Omega2_max], and remix. Uses the SAME TM
+% and bounds as the allocation, so under saturation_on this is a no-op
+% (every allocation return path already lies in the feasible box) -- a
+% material change here under saturation_on indicates an allocation bug.
+% Under saturation_off this implements the naive clipped baseline: the
+% clamp distorts the command direction, and delta_u is deliberately
+% left at zero (the baseline is oblivious to the clip -- no anti-windup).
+Om2_final = TM_inv * u_bar;
+Om2_final = min(max(Om2_final, Omega2_min), Omega2_max);
+u_bar     = TM * Om2_final;
 
 %% ============== STEP 13: Auxiliary-state update =====================
 % Per-channel scalar contraction:
