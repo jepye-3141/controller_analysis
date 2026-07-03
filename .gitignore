@@ -1,0 +1,30 @@
+# Documentation (generated, not tracked)
+docs/
+docs/**
+CLAUDE.md
+
+# Ongoing research materials
+ATLIS Ongoing Research/
+ATLIS Ongoing Research/**
+.gitignore
+Ballistics_Simulation-master
+
+# Simulink build cache (regenerable on next model run)
+slprj/
+*.slxc
+
+# macOS finder metadata
+.DS_Store
+
+# Regenerable simulation logs and outputs (large; kept local)
+logs/
+run_logs/
+
+# Local design materials (not part of the codebase)
+design work/
+
+# MATLAB editor autosaves
+*.asv
+
+# Regenerable vector figures (PNG twins are tracked; EPS kept on disk only for the local paper build)
+*.eps
