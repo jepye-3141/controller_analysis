@@ -22,3 +22,9 @@ run_logs/
 
 # Local design materials (not part of the codebase)
 design work/
+
+# MATLAB editor autosaves
+*.asv
+
+# Regenerable vector figures (PNG twins are tracked; EPS kept on disk only for the local paper build)
+*.eps

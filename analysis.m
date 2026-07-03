@@ -254,7 +254,7 @@ rot = eul2rotm([rot0(3) rot0(2) rot0(1)], "ZYX");
 vel0 = rot*deploy_point(1:3); % earth -> body
 rotvel0 = rot*deploy_point(4:6); % earth -> body
 
-xi = [vel0/3; rotvel0/3; rot0; x0];
+xi = [vel0; rotvel0; rot0; x0];
 xf_ballistic = [xi(10:11,:);0];
 
 simcase = STABILIZE;
@@ -1851,66 +1851,66 @@ ylabel("Drone index (1 is leader)")
 export_figure("figs/34_heatmap_spiral_pid_distances")
 
 %% Score Plots
-step_lqr_min_delta_score = norm(step_lqr_min_distances-ideal_distances)/norm(step_lqr_min_distances+ideal_distances);
-step_lqr_avg_delta_score = norm(step_lqr_avg_distances-ideal_distances)/norm(step_lqr_avg_distances+ideal_distances);
-step_lqr_max_delta_score = norm(step_lqr_max_distances-ideal_distances)/norm(step_lqr_max_distances+ideal_distances);
-step_smc_min_delta_score = norm(step_smc_min_distances-ideal_distances)/norm(step_smc_min_distances+ideal_distances);
-step_smc_avg_delta_score = norm(step_smc_avg_distances-ideal_distances)/norm(step_smc_avg_distances+ideal_distances);
-step_smc_max_delta_score = norm(step_smc_max_distances-ideal_distances)/norm(step_smc_max_distances+ideal_distances);
-step_discrete_smc_min_delta_score = norm(step_discrete_smc_min_distances-ideal_distances)/norm(step_discrete_smc_min_distances+ideal_distances);
-step_discrete_smc_avg_delta_score = norm(step_discrete_smc_avg_distances-ideal_distances)/norm(step_discrete_smc_avg_distances+ideal_distances);
-step_discrete_smc_max_delta_score = norm(step_discrete_smc_max_distances-ideal_distances)/norm(step_discrete_smc_max_distances+ideal_distances);
-step_pid_min_delta_score = norm(step_pid_min_distances-ideal_distances)/norm(step_pid_min_distances+ideal_distances);
-step_pid_avg_delta_score = norm(step_pid_avg_distances-ideal_distances)/norm(step_pid_avg_distances+ideal_distances);
-step_pid_max_delta_score = norm(step_pid_max_distances-ideal_distances)/norm(step_pid_max_distances+ideal_distances);
+step_lqr_min_delta_score = norm(step_lqr_min_distances-ideal_distances, 'fro')/norm(step_lqr_min_distances+ideal_distances, 'fro');
+step_lqr_avg_delta_score = norm(step_lqr_avg_distances-ideal_distances, 'fro')/norm(step_lqr_avg_distances+ideal_distances, 'fro');
+step_lqr_max_delta_score = norm(step_lqr_max_distances-ideal_distances, 'fro')/norm(step_lqr_max_distances+ideal_distances, 'fro');
+step_smc_min_delta_score = norm(step_smc_min_distances-ideal_distances, 'fro')/norm(step_smc_min_distances+ideal_distances, 'fro');
+step_smc_avg_delta_score = norm(step_smc_avg_distances-ideal_distances, 'fro')/norm(step_smc_avg_distances+ideal_distances, 'fro');
+step_smc_max_delta_score = norm(step_smc_max_distances-ideal_distances, 'fro')/norm(step_smc_max_distances+ideal_distances, 'fro');
+step_discrete_smc_min_delta_score = norm(step_discrete_smc_min_distances-ideal_distances, 'fro')/norm(step_discrete_smc_min_distances+ideal_distances, 'fro');
+step_discrete_smc_avg_delta_score = norm(step_discrete_smc_avg_distances-ideal_distances, 'fro')/norm(step_discrete_smc_avg_distances+ideal_distances, 'fro');
+step_discrete_smc_max_delta_score = norm(step_discrete_smc_max_distances-ideal_distances, 'fro')/norm(step_discrete_smc_max_distances+ideal_distances, 'fro');
+step_pid_min_delta_score = norm(step_pid_min_distances-ideal_distances, 'fro')/norm(step_pid_min_distances+ideal_distances, 'fro');
+step_pid_avg_delta_score = norm(step_pid_avg_distances-ideal_distances, 'fro')/norm(step_pid_avg_distances+ideal_distances, 'fro');
+step_pid_max_delta_score = norm(step_pid_max_distances-ideal_distances, 'fro')/norm(step_pid_max_distances+ideal_distances, 'fro');
 step_score_mat = [step_lqr_min_delta_score step_smc_min_delta_score step_discrete_smc_min_delta_score step_pid_min_delta_score; 
                   step_lqr_avg_delta_score step_smc_avg_delta_score step_discrete_smc_avg_delta_score step_pid_avg_delta_score;   
                   step_lqr_max_delta_score step_smc_max_delta_score step_discrete_smc_max_delta_score step_pid_max_delta_score];
 
-step_lqr_uncertainty_min_delta_score = norm(step_lqr_uncertainty_min_distances-ideal_distances)/norm(step_lqr_uncertainty_min_distances+ideal_distances);
-step_lqr_uncertainty_avg_delta_score = norm(step_lqr_uncertainty_avg_distances-ideal_distances)/norm(step_lqr_uncertainty_avg_distances+ideal_distances);
-step_lqr_uncertainty_max_delta_score = norm(step_lqr_uncertainty_max_distances-ideal_distances)/norm(step_lqr_uncertainty_max_distances+ideal_distances);
-step_smc_uncertainty_min_delta_score = norm(step_smc_uncertainty_min_distances-ideal_distances)/norm(step_smc_uncertainty_min_distances+ideal_distances);
-step_smc_uncertainty_avg_delta_score = norm(step_smc_uncertainty_avg_distances-ideal_distances)/norm(step_smc_uncertainty_avg_distances+ideal_distances);
-step_smc_uncertainty_max_delta_score = norm(step_smc_uncertainty_max_distances-ideal_distances)/norm(step_smc_uncertainty_max_distances+ideal_distances);
-step_discrete_smc_uncertainty_min_delta_score = norm(step_discrete_smc_uncertainty_min_distances-ideal_distances)/norm(step_discrete_smc_uncertainty_min_distances+ideal_distances);
-step_discrete_smc_uncertainty_avg_delta_score = norm(step_discrete_smc_uncertainty_avg_distances-ideal_distances)/norm(step_discrete_smc_uncertainty_avg_distances+ideal_distances);
-step_discrete_smc_uncertainty_max_delta_score = norm(step_discrete_smc_uncertainty_max_distances-ideal_distances)/norm(step_discrete_smc_uncertainty_max_distances+ideal_distances);
-step_pid_uncertainty_min_delta_score = norm(step_pid_uncertainty_min_distances-ideal_distances)/norm(step_pid_uncertainty_min_distances+ideal_distances);
-step_pid_uncertainty_avg_delta_score = norm(step_pid_uncertainty_avg_distances-ideal_distances)/norm(step_pid_uncertainty_avg_distances+ideal_distances);
-step_pid_uncertainty_max_delta_score = norm(step_pid_uncertainty_max_distances-ideal_distances)/norm(step_pid_uncertainty_max_distances+ideal_distances);
+step_lqr_uncertainty_min_delta_score = norm(step_lqr_uncertainty_min_distances-ideal_distances, 'fro')/norm(step_lqr_uncertainty_min_distances+ideal_distances, 'fro');
+step_lqr_uncertainty_avg_delta_score = norm(step_lqr_uncertainty_avg_distances-ideal_distances, 'fro')/norm(step_lqr_uncertainty_avg_distances+ideal_distances, 'fro');
+step_lqr_uncertainty_max_delta_score = norm(step_lqr_uncertainty_max_distances-ideal_distances, 'fro')/norm(step_lqr_uncertainty_max_distances+ideal_distances, 'fro');
+step_smc_uncertainty_min_delta_score = norm(step_smc_uncertainty_min_distances-ideal_distances, 'fro')/norm(step_smc_uncertainty_min_distances+ideal_distances, 'fro');
+step_smc_uncertainty_avg_delta_score = norm(step_smc_uncertainty_avg_distances-ideal_distances, 'fro')/norm(step_smc_uncertainty_avg_distances+ideal_distances, 'fro');
+step_smc_uncertainty_max_delta_score = norm(step_smc_uncertainty_max_distances-ideal_distances, 'fro')/norm(step_smc_uncertainty_max_distances+ideal_distances, 'fro');
+step_discrete_smc_uncertainty_min_delta_score = norm(step_discrete_smc_uncertainty_min_distances-ideal_distances, 'fro')/norm(step_discrete_smc_uncertainty_min_distances+ideal_distances, 'fro');
+step_discrete_smc_uncertainty_avg_delta_score = norm(step_discrete_smc_uncertainty_avg_distances-ideal_distances, 'fro')/norm(step_discrete_smc_uncertainty_avg_distances+ideal_distances, 'fro');
+step_discrete_smc_uncertainty_max_delta_score = norm(step_discrete_smc_uncertainty_max_distances-ideal_distances, 'fro')/norm(step_discrete_smc_uncertainty_max_distances+ideal_distances, 'fro');
+step_pid_uncertainty_min_delta_score = norm(step_pid_uncertainty_min_distances-ideal_distances, 'fro')/norm(step_pid_uncertainty_min_distances+ideal_distances, 'fro');
+step_pid_uncertainty_avg_delta_score = norm(step_pid_uncertainty_avg_distances-ideal_distances, 'fro')/norm(step_pid_uncertainty_avg_distances+ideal_distances, 'fro');
+step_pid_uncertainty_max_delta_score = norm(step_pid_uncertainty_max_distances-ideal_distances, 'fro')/norm(step_pid_uncertainty_max_distances+ideal_distances, 'fro');
 step_uncertainty_score_mat = [step_lqr_uncertainty_min_delta_score step_smc_uncertainty_min_delta_score step_discrete_smc_uncertainty_min_delta_score step_pid_uncertainty_min_delta_score; 
                               step_lqr_uncertainty_avg_delta_score step_smc_uncertainty_avg_delta_score step_discrete_smc_uncertainty_avg_delta_score step_pid_uncertainty_avg_delta_score;   
                               step_lqr_uncertainty_max_delta_score step_smc_uncertainty_max_delta_score step_discrete_smc_uncertainty_max_delta_score step_pid_uncertainty_max_delta_score];
 
-f8_lqr_min_delta_score = norm(f8_lqr_min_distances-ideal_distances)/norm(f8_lqr_min_distances+ideal_distances);
-f8_lqr_avg_delta_score = norm(f8_lqr_avg_distances-ideal_distances)/norm(f8_lqr_avg_distances+ideal_distances);
-f8_lqr_max_delta_score = norm(f8_lqr_max_distances-ideal_distances)/norm(f8_lqr_max_distances+ideal_distances);
-f8_smc_min_delta_score = norm(f8_smc_min_distances-ideal_distances)/norm(f8_smc_min_distances+ideal_distances);
-f8_smc_avg_delta_score = norm(f8_smc_avg_distances-ideal_distances)/norm(f8_smc_avg_distances+ideal_distances);
-f8_smc_max_delta_score = norm(f8_smc_max_distances-ideal_distances)/norm(f8_smc_max_distances+ideal_distances);
-f8_discrete_smc_min_delta_score = norm(f8_discrete_smc_min_distances-ideal_distances)/norm(f8_discrete_smc_min_distances+ideal_distances);
-f8_discrete_smc_avg_delta_score = norm(f8_discrete_smc_avg_distances-ideal_distances)/norm(f8_discrete_smc_avg_distances+ideal_distances);
-f8_discrete_smc_max_delta_score = norm(f8_discrete_smc_max_distances-ideal_distances)/norm(f8_discrete_smc_max_distances+ideal_distances);
-f8_pid_min_delta_score = norm(f8_pid_min_distances-ideal_distances)/norm(f8_pid_min_distances+ideal_distances);
-f8_pid_avg_delta_score = norm(f8_pid_avg_distances-ideal_distances)/norm(f8_pid_avg_distances+ideal_distances);
-f8_pid_max_delta_score = norm(f8_pid_max_distances-ideal_distances)/norm(f8_pid_max_distances+ideal_distances);
+f8_lqr_min_delta_score = norm(f8_lqr_min_distances-ideal_distances, 'fro')/norm(f8_lqr_min_distances+ideal_distances, 'fro');
+f8_lqr_avg_delta_score = norm(f8_lqr_avg_distances-ideal_distances, 'fro')/norm(f8_lqr_avg_distances+ideal_distances, 'fro');
+f8_lqr_max_delta_score = norm(f8_lqr_max_distances-ideal_distances, 'fro')/norm(f8_lqr_max_distances+ideal_distances, 'fro');
+f8_smc_min_delta_score = norm(f8_smc_min_distances-ideal_distances, 'fro')/norm(f8_smc_min_distances+ideal_distances, 'fro');
+f8_smc_avg_delta_score = norm(f8_smc_avg_distances-ideal_distances, 'fro')/norm(f8_smc_avg_distances+ideal_distances, 'fro');
+f8_smc_max_delta_score = norm(f8_smc_max_distances-ideal_distances, 'fro')/norm(f8_smc_max_distances+ideal_distances, 'fro');
+f8_discrete_smc_min_delta_score = norm(f8_discrete_smc_min_distances-ideal_distances, 'fro')/norm(f8_discrete_smc_min_distances+ideal_distances, 'fro');
+f8_discrete_smc_avg_delta_score = norm(f8_discrete_smc_avg_distances-ideal_distances, 'fro')/norm(f8_discrete_smc_avg_distances+ideal_distances, 'fro');
+f8_discrete_smc_max_delta_score = norm(f8_discrete_smc_max_distances-ideal_distances, 'fro')/norm(f8_discrete_smc_max_distances+ideal_distances, 'fro');
+f8_pid_min_delta_score = norm(f8_pid_min_distances-ideal_distances, 'fro')/norm(f8_pid_min_distances+ideal_distances, 'fro');
+f8_pid_avg_delta_score = norm(f8_pid_avg_distances-ideal_distances, 'fro')/norm(f8_pid_avg_distances+ideal_distances, 'fro');
+f8_pid_max_delta_score = norm(f8_pid_max_distances-ideal_distances, 'fro')/norm(f8_pid_max_distances+ideal_distances, 'fro');
 f8_score_mat = [f8_lqr_min_delta_score f8_smc_min_delta_score f8_discrete_smc_min_delta_score f8_pid_min_delta_score; 
                 f8_lqr_avg_delta_score f8_smc_avg_delta_score f8_discrete_smc_avg_delta_score f8_pid_avg_delta_score;   
                 f8_lqr_max_delta_score f8_smc_max_delta_score f8_discrete_smc_max_delta_score f8_pid_max_delta_score];
 
-spiral_lqr_min_delta_score = norm(spiral_lqr_min_distances-ideal_distances)/norm(spiral_lqr_min_distances+ideal_distances);
-spiral_lqr_avg_delta_score = norm(spiral_lqr_avg_distances-ideal_distances)/norm(spiral_lqr_avg_distances+ideal_distances);
-spiral_lqr_max_delta_score = norm(spiral_lqr_max_distances-ideal_distances)/norm(spiral_lqr_max_distances+ideal_distances);
-spiral_smc_min_delta_score = norm(spiral_smc_min_distances-ideal_distances)/norm(spiral_smc_min_distances+ideal_distances);
-spiral_smc_avg_delta_score = norm(spiral_smc_avg_distances-ideal_distances)/norm(spiral_smc_avg_distances+ideal_distances);
-spiral_smc_max_delta_score = norm(spiral_smc_max_distances-ideal_distances)/norm(spiral_smc_max_distances+ideal_distances);
-spiral_discrete_smc_min_delta_score = norm(spiral_discrete_smc_min_distances-ideal_distances)/norm(spiral_discrete_smc_min_distances+ideal_distances);
-spiral_discrete_smc_avg_delta_score = norm(spiral_discrete_smc_avg_distances-ideal_distances)/norm(spiral_discrete_smc_avg_distances+ideal_distances);
-spiral_discrete_smc_max_delta_score = norm(spiral_discrete_smc_max_distances-ideal_distances)/norm(spiral_discrete_smc_max_distances+ideal_distances);
-spiral_pid_min_delta_score = norm(spiral_pid_min_distances-ideal_distances)/norm(spiral_pid_min_distances+ideal_distances);
-spiral_pid_avg_delta_score = norm(spiral_pid_avg_distances-ideal_distances)/norm(spiral_pid_avg_distances+ideal_distances);
-spiral_pid_max_delta_score = norm(spiral_pid_max_distances-ideal_distances)/norm(spiral_pid_max_distances+ideal_distances);
+spiral_lqr_min_delta_score = norm(spiral_lqr_min_distances-ideal_distances, 'fro')/norm(spiral_lqr_min_distances+ideal_distances, 'fro');
+spiral_lqr_avg_delta_score = norm(spiral_lqr_avg_distances-ideal_distances, 'fro')/norm(spiral_lqr_avg_distances+ideal_distances, 'fro');
+spiral_lqr_max_delta_score = norm(spiral_lqr_max_distances-ideal_distances, 'fro')/norm(spiral_lqr_max_distances+ideal_distances, 'fro');
+spiral_smc_min_delta_score = norm(spiral_smc_min_distances-ideal_distances, 'fro')/norm(spiral_smc_min_distances+ideal_distances, 'fro');
+spiral_smc_avg_delta_score = norm(spiral_smc_avg_distances-ideal_distances, 'fro')/norm(spiral_smc_avg_distances+ideal_distances, 'fro');
+spiral_smc_max_delta_score = norm(spiral_smc_max_distances-ideal_distances, 'fro')/norm(spiral_smc_max_distances+ideal_distances, 'fro');
+spiral_discrete_smc_min_delta_score = norm(spiral_discrete_smc_min_distances-ideal_distances, 'fro')/norm(spiral_discrete_smc_min_distances+ideal_distances, 'fro');
+spiral_discrete_smc_avg_delta_score = norm(spiral_discrete_smc_avg_distances-ideal_distances, 'fro')/norm(spiral_discrete_smc_avg_distances+ideal_distances, 'fro');
+spiral_discrete_smc_max_delta_score = norm(spiral_discrete_smc_max_distances-ideal_distances, 'fro')/norm(spiral_discrete_smc_max_distances+ideal_distances, 'fro');
+spiral_pid_min_delta_score = norm(spiral_pid_min_distances-ideal_distances, 'fro')/norm(spiral_pid_min_distances+ideal_distances, 'fro');
+spiral_pid_avg_delta_score = norm(spiral_pid_avg_distances-ideal_distances, 'fro')/norm(spiral_pid_avg_distances+ideal_distances, 'fro');
+spiral_pid_max_delta_score = norm(spiral_pid_max_distances-ideal_distances, 'fro')/norm(spiral_pid_max_distances+ideal_distances, 'fro');
 spiral_score_mat = [spiral_lqr_min_delta_score spiral_smc_min_delta_score spiral_discrete_smc_min_delta_score spiral_pid_min_delta_score; 
                     spiral_lqr_avg_delta_score spiral_smc_avg_delta_score spiral_discrete_smc_avg_delta_score spiral_pid_avg_delta_score;   
                     spiral_lqr_max_delta_score spiral_smc_max_delta_score spiral_discrete_smc_max_delta_score spiral_pid_max_delta_score];
@@ -2180,33 +2180,33 @@ fontsize(gcf, 9, "points")
 export_figure("figs/36_kinetic_energy", Width=2400, Height=1800)
 
 %% Kinetic Energy Scores
-max_step_lqr_ke                         = max(trapz(step_time, step_lqr_ke(:,1)));
-max_step_smc_ke                         = max(trapz(step_time, step_smc_ke(:,1)));
-max_step_discrete_smc_ke                = max(trapz(step_time, step_discrete_smc_ke(:,1)));
-max_step_pid_ke                         = max(trapz(step_time, step_pid_ke(:,1)));
-max_step_lqr_ballistic_ke               = max(trapz(ballistic_time, step_lqr_ballistic_ke(:,1)));
-max_step_smc_ballistic_ke               = max(trapz(ballistic_time, step_smc_ballistic_ke(:,1)));
-max_step_discrete_smc_ballistic_ke      = max(trapz(ballistic_time, step_discrete_smc_ballistic_ke(:,1)));
-max_step_pid_ballistic_ke               = max(trapz(ballistic_time, step_pid_ballistic_ke(:,1)));
-max_step_lqr_uncertainty_ke             = max(trapz(step_time, step_lqr_uncertainty_ke(:,1)));
-max_step_smc_uncertainty_ke             = max(trapz(step_time, step_smc_uncertainty_ke(:,1)));
-max_step_discrete_smc_uncertainty_ke    = max(trapz(step_time, step_discrete_smc_uncertainty_ke(:,1)));
-max_step_pid_uncertainty_ke             = max(trapz(step_time, step_pid_uncertainty_ke(:,1)));
-max_f8_lqr_ke                           = max(trapz(f8_time, f8_lqr_ke(:,1)));
-max_f8_smc_ke                           = max(trapz(f8_time, f8_smc_ke(:,1)));
-max_f8_discrete_smc_ke                  = max(trapz(f8_time, f8_discrete_smc_ke(:,1)));
-max_f8_pid_ke                           = max(trapz(f8_time, f8_pid_ke(:,1)));
-max_spiral_lqr_ke                       = max(trapz(spiral_time, spiral_lqr_ke(:,1)));
-max_spiral_smc_ke                       = max(trapz(spiral_time, spiral_smc_ke(:,1)));
-max_spiral_discrete_smc_ke              = max(trapz(spiral_time, spiral_discrete_smc_ke(:,1)));
-max_spiral_pid_ke                       = max(trapz(spiral_time, spiral_pid_ke(:,1)));
+avg_step_lqr_ke                         = mean(mean(step_lqr_ke, 2));
+avg_step_smc_ke                         = mean(mean(step_smc_ke, 2));
+avg_step_discrete_smc_ke                = mean(mean(step_discrete_smc_ke, 2));
+avg_step_pid_ke                         = mean(mean(step_pid_ke, 2));
+avg_step_lqr_ballistic_ke               = mean(mean(step_lqr_ballistic_ke, 2));
+avg_step_smc_ballistic_ke               = mean(mean(step_smc_ballistic_ke, 2));
+avg_step_discrete_smc_ballistic_ke      = mean(mean(step_discrete_smc_ballistic_ke, 2));
+avg_step_pid_ballistic_ke               = mean(mean(step_pid_ballistic_ke, 2));
+avg_step_lqr_uncertainty_ke             = mean(mean(step_lqr_uncertainty_ke, 2));
+avg_step_smc_uncertainty_ke             = mean(mean(step_smc_uncertainty_ke, 2));
+avg_step_discrete_smc_uncertainty_ke    = mean(mean(step_discrete_smc_uncertainty_ke, 2));
+avg_step_pid_uncertainty_ke             = mean(mean(step_pid_uncertainty_ke, 2));
+avg_f8_lqr_ke                           = mean(mean(f8_lqr_ke, 2));
+avg_f8_smc_ke                           = mean(mean(f8_smc_ke, 2));
+avg_f8_discrete_smc_ke                  = mean(mean(f8_discrete_smc_ke, 2));
+avg_f8_pid_ke                           = mean(mean(f8_pid_ke, 2));
+avg_spiral_lqr_ke                       = mean(mean(spiral_lqr_ke, 2));
+avg_spiral_smc_ke                       = mean(mean(spiral_smc_ke, 2));
+avg_spiral_discrete_smc_ke              = mean(mean(spiral_discrete_smc_ke, 2));
+avg_spiral_pid_ke                       = mean(mean(spiral_pid_ke, 2));
 
-unified_ke_step = [max_step_lqr_ke max_step_smc_ke max_step_discrete_smc_ke max_step_pid_ke];
-unified_ke_step_ballistic = [max_step_lqr_ballistic_ke max_step_smc_ballistic_ke max_step_discrete_smc_ballistic_ke max_step_pid_ballistic_ke];
-unified_ke_uncertainty = [max_step_lqr_uncertainty_ke max_step_smc_uncertainty_ke max_step_discrete_smc_uncertainty_ke ...
-    max_step_pid_uncertainty_ke];
-unified_ke_f8 = [max_f8_lqr_ke max_f8_smc_ke max_f8_discrete_smc_ke max_f8_pid_ke];
-unified_ke_spiral = [max_spiral_lqr_ke max_spiral_smc_ke max_spiral_discrete_smc_ke max_spiral_pid_ke];
+unified_ke_step = [avg_step_lqr_ke avg_step_smc_ke avg_step_discrete_smc_ke avg_step_pid_ke];
+unified_ke_step_ballistic = [avg_step_lqr_ballistic_ke avg_step_smc_ballistic_ke avg_step_discrete_smc_ballistic_ke avg_step_pid_ballistic_ke];
+unified_ke_uncertainty = [avg_step_lqr_uncertainty_ke avg_step_smc_uncertainty_ke avg_step_discrete_smc_uncertainty_ke ...
+    avg_step_pid_uncertainty_ke];
+unified_ke_f8 = [avg_f8_lqr_ke avg_f8_smc_ke avg_f8_discrete_smc_ke avg_f8_pid_ke];
+unified_ke_spiral = [avg_spiral_lqr_ke avg_spiral_smc_ke avg_spiral_discrete_smc_ke avg_spiral_pid_ke];
 
 ke_scores_step = zeros(4,4);
 ke_scores_ballistic = zeros(4,4);
@@ -2227,13 +2227,13 @@ figure
 conlabels = {'LQR', 'cSMC', 'dSMC', 'PID'};
 subplot(3,1,1)
 h1 = heatmap(conlabels, conlabels, ke_scores_step, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
-title("Relative % integrated KE over time, step impulse")
+title("Relative % per-timestep average KE, step impulse")
 h1.CellLabelFormat = '%.2f %%'; 
 clim([-50 50])
 
 subplot(3,1,2)
 h2 = heatmap(conlabels, conlabels, ke_scores_uncertainty, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
-title("Relative % integrated KE over time, step w/ uncertainty")
+title("Relative % per-timestep average KE, step w/ uncertainty")
 h2.CellLabelFormat = '%.2f %%'; 
 clim([-50 50])
 
@@ -2251,7 +2251,7 @@ clim([-50 50])
 
 subplot(3,1,3)
 h3 = heatmap(conlabels, conlabels, ke_scores_ballistic, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
-title("Relative % integrated KE over time, ballistic step")
+title("Relative % per-timestep average KE, ballistic step")
 h3.CellLabelFormat = '%.2f %%'; 
 clim([-50 50])
 export_figure("figs/37_kinetic_energy_scores")
@@ -2273,10 +2273,10 @@ xf_smc = interp_step_smc_pos(end,:,:);
 xf_discrete_smc = interp_step_discrete_smc_pos(end,:,:);
 xf_pid = interp_step_pid_pos(end,:,:);
 
-ts_xf_lqr = 0;
-ts_xf_smc = 0;
-ts_xf_discrete_smc = 0;
-ts_xf_pid = 0;
+ts_xf_lqr = NaN;
+ts_xf_smc = NaN;
+ts_xf_discrete_smc = NaN;
+ts_xf_pid = NaN;
 
 for i=1:size(interp_step_smc_pos, 1)
     delta_lqr = vecnorm(interp_step_lqr_pos(i,:,:) - xf_lqr,2,3);
@@ -2291,19 +2291,19 @@ for i=1:size(interp_step_smc_pos, 1)
 
     delta_lqr = max_delta_lqr / norm(squeeze(xf_lqr(1,max_delta_lqr_idx,:) - xi_lqr(1,max_delta_lqr_idx,:)));
     delta_smc = max_delta_smc / norm(squeeze(xf_smc(1,max_delta_smc_idx,:) - xi_smc(1,max_delta_smc_idx,:)));
-    delta_discrete_smc = max_delta_discrete_smc / norm(squeeze(xf_discrete_smc(1,max_delta_discrete_smc_idx,:) - xi_smc(1,max_delta_discrete_smc_idx,:)));
+    delta_discrete_smc = max_delta_discrete_smc / norm(squeeze(xf_discrete_smc(1,max_delta_discrete_smc_idx,:) - xi_discrete_smc(1,max_delta_discrete_smc_idx,:)));
     delta_pid = max_delta_pid / norm(squeeze(xf_pid(1,max_delta_pid_idx,:) - xi_pid(1,max_delta_pid_idx,:)));
 
-    if (delta_lqr <= 0.05 && ts_xf_lqr == 0)
+    if (delta_lqr <= 0.05 && isnan(ts_xf_lqr))
         ts_xf_lqr = step_time(i);
     end
-    if (delta_smc <= 0.05 && ts_xf_smc == 0)
+    if (delta_smc <= 0.05 && isnan(ts_xf_smc))
         ts_xf_smc = step_time(i);
     end
-    if (delta_discrete_smc <= 0.05 && ts_xf_discrete_smc == 0)
+    if (delta_discrete_smc <= 0.05 && isnan(ts_xf_discrete_smc))
         ts_xf_discrete_smc = step_time(i);
     end
-    if (delta_pid <= 0.05 && ts_xf_pid == 0)
+    if (delta_pid <= 0.05 && isnan(ts_xf_pid))
         ts_xf_pid = step_time(i);
     end
 end
@@ -2316,10 +2316,10 @@ for i=1:4
 end
 
 % Ballistic Analysis
-ts_xf_lqr_ballistic = 0;
-ts_xf_smc_ballistic = 0;
-ts_xf_discrete_smc_ballistic = 0;
-ts_xf_pid_ballistic = 0;
+ts_xf_lqr_ballistic = NaN;
+ts_xf_smc_ballistic = NaN;
+ts_xf_discrete_smc_ballistic = NaN;
+ts_xf_pid_ballistic = NaN;
 
 xi_lqr_ballistic = interp_step_lqr_ballistic_pos(1,:,:);
 xi_smc_ballistic = interp_step_smc_ballistic_pos(1,:,:);
@@ -2346,16 +2346,16 @@ for i=1:size(interp_step_smc_ballistic_pos, 1)
     delta_discrete_smc = max_delta_discrete_smc / norm(squeeze(xf_discrete_smc_ballistic(1,max_delta_discrete_smc_idx,:) - xi_discrete_smc_ballistic(1,max_delta_discrete_smc_idx,:)));
     delta_pid = max_delta_pid / norm(squeeze(xf_pid_ballistic(1,max_delta_pid_idx,:) - xi_pid_ballistic(1,max_delta_pid_idx,:)));
 
-    if (delta_lqr <= 0.05 && ts_xf_lqr_ballistic == 0)
+    if (delta_lqr <= 0.05 && isnan(ts_xf_lqr_ballistic))
         ts_xf_lqr_ballistic = ballistic_time(i);
     end
-    if (delta_smc <= 0.05 && ts_xf_smc_ballistic == 0)
+    if (delta_smc <= 0.05 && isnan(ts_xf_smc_ballistic))
         ts_xf_smc_ballistic = ballistic_time(i);
     end
-    if (delta_discrete_smc <= 0.05 && ts_xf_discrete_smc_ballistic == 0)
+    if (delta_discrete_smc <= 0.05 && isnan(ts_xf_discrete_smc_ballistic))
         ts_xf_discrete_smc_ballistic = ballistic_time(i);
     end
-    if (delta_pid <= 0.05 && ts_xf_pid_ballistic == 0)
+    if (delta_pid <= 0.05 && isnan(ts_xf_pid_ballistic))
         ts_xf_pid_ballistic = ballistic_time(i);
     end
 end
@@ -2377,10 +2377,10 @@ xf_smc_uncertainty = interp_step_smc_uncertainty_pos(end,:,:);
 xf_discrete_smc_uncertainty = interp_step_discrete_smc_uncertainty_pos(end,:,:);
 xf_pid_uncertainty = interp_step_pid_uncertainty_pos(end,:,:);
 
-ts_xf_lqr_uncertainty = 0;
-ts_xf_smc_uncertainty = 0;
-ts_xf_discrete_smc_uncertainty = 0;
-ts_xf_pid_uncertainty = 0;
+ts_xf_lqr_uncertainty = NaN;
+ts_xf_smc_uncertainty = NaN;
+ts_xf_discrete_smc_uncertainty = NaN;
+ts_xf_pid_uncertainty = NaN;
 
 for i=1:size(interp_step_smc_uncertainty_pos, 1)
     delta_lqr_uncertainty = vecnorm(interp_step_lqr_uncertainty_pos(i,:,:) - xf_lqr_uncertainty,2,3);
@@ -2398,16 +2398,16 @@ for i=1:size(interp_step_smc_uncertainty_pos, 1)
     delta_discrete_smc_uncertainty = max_delta_discrete_smc_uncertainty / norm(squeeze(xf_discrete_smc_uncertainty(1,max_delta_discrete_smc_idx_uncertainty,:) - xi_discrete_smc_uncertainty(1,max_delta_discrete_smc_idx_uncertainty,:)));
     delta_pid_uncertainty = max_delta_pid_uncertainty / norm(squeeze(xf_pid_uncertainty(1,max_delta_pid_idx_uncertainty,:) - xi_pid_uncertainty(1,max_delta_pid_idx_uncertainty,:)));
 
-    if (delta_lqr_uncertainty <= 0.05 && ts_xf_lqr_uncertainty == 0)
+    if (delta_lqr_uncertainty <= 0.05 && isnan(ts_xf_lqr_uncertainty))
         ts_xf_lqr_uncertainty = step_time(i);
     end
-    if (delta_smc_uncertainty <= 0.05 && ts_xf_smc_uncertainty == 0)
+    if (delta_smc_uncertainty <= 0.05 && isnan(ts_xf_smc_uncertainty))
         ts_xf_smc_uncertainty = step_time(i);
     end
-    if (delta_discrete_smc_uncertainty <= 0.05 && ts_xf_discrete_smc_uncertainty == 0)
+    if (delta_discrete_smc_uncertainty <= 0.05 && isnan(ts_xf_discrete_smc_uncertainty))
         ts_xf_discrete_smc_uncertainty = step_time(i);
     end
-    if (delta_pid_uncertainty <= 0.05 && ts_xf_pid_uncertainty == 0)
+    if (delta_pid_uncertainty <= 0.05 && isnan(ts_xf_pid_uncertainty))
         ts_xf_pid_uncertainty = step_time(i);
     end
 end
@@ -2423,19 +2423,19 @@ figure
 conlabels = {'LQR', 'cSMC', 'dSMC', 'PID'};
 subplot(3,1,1)
 h1 = heatmap(conlabels, conlabels, ts_score, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
-title("Relative % 99% settling time, step impulse")
+title("Relative % 95% settling time, step impulse")
 h1.CellLabelFormat = '%.1f %%'; 
 clim([-50 50])
 
 subplot(3,1,2)
 h2 = heatmap(conlabels, conlabels, ts_score_uncertainty, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
-title("Relative % 99% settling time, step impulse with uncertainty")
+title("Relative % 95% settling time, step impulse with uncertainty")
 h2.CellLabelFormat = '%.1f %%'; 
 clim([-50 50])
 
 subplot(3,1,3)
 h3 = heatmap(conlabels, conlabels, ts_score_ballistic, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
-title("Relative % 99% settling time, ballistic")
+title("Relative % 95% settling time, ballistic")
 h3.CellLabelFormat = '%.1f %%'; 
 clim([-50 50])
 export_figure("figs/38_settling_time_scores")
