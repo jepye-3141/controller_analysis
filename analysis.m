@@ -301,12 +301,13 @@ launch.p       = -8.379; % axial launch spin (rad/s); restores prior deploy rate
 
 ballistic_solution = eom2(launch, env, false);
 
-test_points = 1:10:size(ballistic_solution.trajectory, 1);
+n_rows = size(ballistic_solution.trajectory, 1);
+test_points = 1:10:n_rows;
 % Never test the appended ground-impact row (altitude 0, full impact
 % velocity): with the fixed 0.1 s output grid, 1:10:rows lands on it whenever
 % rows == 1 (mod 10), and the criterion never checks z (bugsweep 2026-07-10
 % finding 11).
-test_points(test_points == size(ballistic_solution.trajectory, 1)) = [];
+test_points(test_points == n_rows) = [];
 n_test = size(test_points, 2);
 envelope_lqr_mask = false(1, n_test);
 envelope_pid_mask = false(1, n_test);
