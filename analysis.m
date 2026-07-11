@@ -223,8 +223,8 @@ spiral_out_discrete_smc = sim("discrete_smc_swarm")
 %% Ballistic case
 env = aero_constants('std_atm.csv', 'Aerodynamic_Char_120mm_Mortar.xlsx');
 
-launch.Vo      = 100;  % initial vel at muzzle exit in m/s
-launch.el      = 45;   % vertical angle of departure in deg (pos up)
+launch.Vo      = 94;   % muzzle velocity (m/s); operational launch, gentle apogee deploy
+launch.el      = 64;   % departure elevation (deg); recovers reachability optimum
 launch.az      = 15;   % horizontal angle of departure in deg (pos to right)
 launch.w_z0    = 1;    % initial pitch rate in rad/s (pos nose up)
 launch.w_y0    = 0.5;  % initial transverse yaw rate in rad/s (pos for left yaw)
@@ -246,11 +246,15 @@ load_system("discrete_smc_swarm_single")
 
 deploy_point = ballistic_solution.trajectory(ballistic_solution.apogee_idx, :).';
 % Deploy seed: attitude from the pointing vector (cols 7:9), velocities and
-% rates mapped world->body consistently (2026-07-10 fix; cols 13:15 are the
-% invalid legacy Euler channel -- see ballistic_deploy_state.m).
+% rates mapped world->body consistently (2026-07-10 fix). Trajectory cols
+% 13:15 now carry the same derived attitude, backfilled by eom2 -- still
+% interpolate r and call the helper rather than reading the angle columns.
 xi = ballistic_deploy_state(deploy_point(1:3), deploy_point(4:6), ...
     deploy_point(7:9), deploy_point(10:12));
 xf_ballistic = [xi(10:11,:);0];
+% Snapshot for the fig 38 ballistic settling block: the envelope loop below
+% overwrites xf_ballistic per test point.
+xf_ballistic_apogee = xf_ballistic;
 
 simcase = STABILIZE;
 set_param("lqr_swarm_single","StopTime","100", 'SimulationMode','Rapid')
@@ -262,11 +266,27 @@ step_out_smc_ballistic = sim("smc_swarm_single")
 set_param("discrete_smc_swarm_single","StopTime","100", 'SimulationMode','Rapid')
 step_out_discrete_smc_ballistic = sim("discrete_smc_swarm_single")
 
+% The four apogee runs are figure-only (never scored by ballistic_success),
+% so an early stop (in-model 1e5 blowup guard) would otherwise flow silently
+% into figs 36-38 as an interp1 NaN tail (bugsweep 2026-07-10, finding 17).
+apogee_runs  = {step_out_lqr_ballistic, step_out_pid_ballistic, ...
+                step_out_smc_ballistic, step_out_discrete_smc_ballistic};
+apogee_names = ["LQR", "PID", "cSMC", "dSMC"];
+for a = 1:numel(apogee_runs)
+    t_end_a = apogee_runs{a}.posout.Time(end);
+    if t_end_a < 100 - 1e-6
+        warning("analysis:apogee_early_stop", ...
+            "Apogee %s run stopped at t=%.2f s < 100 s (1e5 blowup guard); " + ...
+            "its fig 36-38 ballistic cells will be blank/truncated.", ...
+            apogee_names(a), t_end_a);
+    end
+end
+
 %% Ballistic envelope testing
 env = aero_constants('std_atm.csv', 'Aerodynamic_Char_120mm_Mortar.xlsx');
 
-launch.Vo      = 100;  % initial vel at muzzle exit in m/s
-launch.el      = 45;   % vertical angle of departure in deg (pos up)
+launch.Vo      = 94;   % muzzle velocity (m/s); operational launch, gentle apogee deploy
+launch.el      = 64;   % departure elevation (deg); recovers reachability optimum
 launch.az      = 15;   % horizontal angle of departure in deg (pos to right)
 launch.w_z0    = 1;    % initial pitch rate in rad/s (pos nose up)
 launch.w_y0    = 0.5;  % initial transverse yaw rate in rad/s (pos for left yaw)
@@ -282,6 +302,11 @@ launch.p       = -8.379; % axial launch spin (rad/s); restores prior deploy rate
 ballistic_solution = eom2(launch, env, false);
 
 test_points = 1:10:size(ballistic_solution.trajectory, 1);
+% Never test the appended ground-impact row (altitude 0, full impact
+% velocity): with the fixed 0.1 s output grid, 1:10:rows lands on it whenever
+% rows == 1 (mod 10), and the criterion never checks z (bugsweep 2026-07-10
+% finding 11).
+test_points(test_points == size(ballistic_solution.trajectory, 1)) = [];
 n_test = size(test_points, 2);
 envelope_lqr_mask = false(1, n_test);
 envelope_pid_mask = false(1, n_test);
@@ -315,19 +340,21 @@ for i = 1:size(test_points,2)
     % deploy + velocity ratio <= 2 whole-trace + rotation-rate ratio <= 2
     % for t > 1 s (grace window, default RotGraceT). rotvelout is the
     % plant's Euler-angle rates [thetadot phidot psidot]
-    % (system_dynamics.m xdot(7:9)) -- the signal the termination charts norm;
-    % Data shape differs per model ([3x1xT] vs [Tx3]), hence squeeze+transpose.
+    % (system_dynamics.m xdot(7:9)) -- the signal the termination charts norm.
+    % lqr/dsmc log a 3-D [3x1xT] array, pid/smc a 2-D [Tx3]; orient to Tx3 by
+    % raw ndims, NOT a size==3 heuristic (which mis-orients [3x1xT] when T==3
+    % exactly -- bugsweep 2026-07-10 finding 12).
     v0_norm = norm(xi(1:3));
     rot_lqr = squeeze(lqr_trial.rotvelout.Data);
-    if size(rot_lqr, 2) ~= 3, rot_lqr = rot_lqr.'; end
+    if ndims(lqr_trial.rotvelout.Data) == 3, rot_lqr = rot_lqr.'; end
     rot_pid = squeeze(pid_trial.rotvelout.Data);
-    if size(rot_pid, 2) ~= 3, rot_pid = rot_pid.'; end
+    if ndims(pid_trial.rotvelout.Data) == 3, rot_pid = rot_pid.'; end
     rot_smc = squeeze(smc_trial.rotvelout.Data);
-    if size(rot_smc, 2) ~= 3, rot_smc = rot_smc.'; end
+    if ndims(smc_trial.rotvelout.Data) == 3, rot_smc = rot_smc.'; end
     rot_dsmc_nosat = squeeze(discrete_smc_trial_nosat.rotvelout.Data);
-    if size(rot_dsmc_nosat, 2) ~= 3, rot_dsmc_nosat = rot_dsmc_nosat.'; end
+    if ndims(discrete_smc_trial_nosat.rotvelout.Data) == 3, rot_dsmc_nosat = rot_dsmc_nosat.'; end
     rot_dsmc_sat = squeeze(discrete_smc_trial_sat.rotvelout.Data);
-    if size(rot_dsmc_sat, 2) ~= 3, rot_dsmc_sat = rot_dsmc_sat.'; end
+    if ndims(discrete_smc_trial_sat.rotvelout.Data) == 3, rot_dsmc_sat = rot_dsmc_sat.'; end
     envelope_lqr_mask(i) = ballistic_success(lqr_trial.posout.Time, ...
         squeeze(lqr_trial.posout.Data(1,:,:)).', squeeze(lqr_trial.velout.Data(1,:,:)).', ...
         xi(10:11), v0_norm, 30, RotVel=rot_lqr);
@@ -754,73 +781,10 @@ step_discrete_smc_ballistic_ke = 0.5*m*temp;
 temp = sum(interp_step_pid_ballistic_vel.^2, 3);
 step_pid_ballistic_ke = 0.5*m*temp;
 
-step_lqr_ballistic_min_distances = [];
-step_lqr_ballistic_avg_distances = [];
-step_lqr_ballistic_max_distances = [];
-for i=1:1
-    temp = repmat(interp_step_lqr_ballistic_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_lqr_ballistic_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    step_lqr_ballistic_min_distances = [step_lqr_ballistic_min_distances; min_distance];
-    step_lqr_ballistic_max_distances = [step_lqr_ballistic_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_lqr_ballistic_avg_distances = [step_lqr_ballistic_avg_distances; avg_distance];
-end
-
-step_smc_ballistic_min_distances = [];
-step_smc_ballistic_avg_distances = [];
-step_smc_ballistic_max_distances = [];
-for i=1:1
-    temp = repmat(interp_step_smc_ballistic_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_smc_ballistic_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    step_smc_ballistic_min_distances = [step_smc_ballistic_min_distances; min_distance];
-    step_smc_ballistic_max_distances = [step_smc_ballistic_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_smc_ballistic_avg_distances = [step_smc_ballistic_avg_distances; avg_distance];
-end
-
-step_discrete_smc_ballistic_min_distances = [];
-step_discrete_smc_ballistic_avg_distances = [];
-step_discrete_smc_ballistic_max_distances = [];
-for i=1:1
-    temp = repmat(interp_step_discrete_smc_ballistic_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_discrete_smc_ballistic_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    step_discrete_smc_ballistic_min_distances = [step_discrete_smc_ballistic_min_distances; min_distance];
-    step_discrete_smc_ballistic_max_distances = [step_discrete_smc_ballistic_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_discrete_smc_ballistic_avg_distances = [step_discrete_smc_ballistic_avg_distances; avg_distance];
-end
-
-step_pid_ballistic_min_distances = [];
-step_pid_ballistic_avg_distances = [];
-step_pid_ballistic_max_distances = [];
-for i=1:1
-    temp = repmat(interp_step_pid_ballistic_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_pid_ballistic_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    step_pid_ballistic_min_distances = [step_pid_ballistic_min_distances; min_distance];
-    step_pid_ballistic_max_distances = [step_pid_ballistic_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_pid_ballistic_avg_distances = [step_pid_ballistic_avg_distances; avg_distance];
-end
+% (Removed 2026-07-10, bugsweep finding 19: the four single-drone ballistic
+% self-distance blocks computed identically-zero 1x10 rows -- one drone's
+% trajectory minus 10 repmat copies of itself -- had zero consumers repo-
+% wide, and were persisted into logs/analysis_log.mat every run.)
 
 % Uncertainty
 interp_step_lqr_uncertainty_pos = interp1(step_out_lqr_uncertainty.posout.Time, permute(step_out_lqr_uncertainty.posout.Data, [3 1 2]), step_time);
@@ -2159,7 +2123,9 @@ for i=1:1
     title("Ballistic, PID")
     xlabel("Time (s)")
     ylabel("Kinetic energy (J)")
-    ylim([0, max(max(step_lqr_ballistic_ke)*5)])
+    % Autoscale to PID's own trace: slaving to 5x LQR's max (as the other
+    % panels do) rendered PID as an unreadable flat line whenever LQR
+    % diverged (bugsweep 2026-07-10 finding 18).
 end
 legend("Leader")
 
@@ -2322,10 +2288,18 @@ xi_lqr_ballistic = interp_step_lqr_ballistic_pos(1,:,:);
 xi_smc_ballistic = interp_step_smc_ballistic_pos(1,:,:);
 xi_discrete_smc_ballistic = interp_step_discrete_smc_ballistic_pos(1,:,:);
 xi_pid_ballistic = interp_step_pid_ballistic_pos(1,:,:);
-xf_lqr_ballistic = interp_step_lqr_ballistic_pos(end,:,:);
-xf_smc_ballistic = interp_step_smc_ballistic_pos(end,:,:);
-xf_discrete_smc_ballistic = interp_step_discrete_smc_ballistic_pos(end,:,:);
-xf_pid_ballistic = interp_step_pid_ballistic_pos(end,:,:);
+% Settle toward the COMMANDED ballistic target xf_ballistic (the apogee
+% deploy XY at ground, L253), not each run's own final position. (Bugsweep
+% 2026-07-10 finding 16: referencing the run's own endpoint guarantees any
+% diverged run a finite, competitive-looking settling time -- the diverged
+% LQR apogee run scored within 3% of the converged controllers. Against the
+% fixed command, a run that never reaches the target keeps ts = NaN, which
+% the score heatmap renders blank -- the correct "did not settle".)
+xf_cmd_ballistic = reshape(xf_ballistic_apogee, [1 1 3]);
+xf_lqr_ballistic = xf_cmd_ballistic;
+xf_smc_ballistic = xf_cmd_ballistic;
+xf_discrete_smc_ballistic = xf_cmd_ballistic;
+xf_pid_ballistic = xf_cmd_ballistic;
 
 for i=1:size(interp_step_smc_ballistic_pos, 1)
     delta_lqr = vecnorm(interp_step_lqr_ballistic_pos(i,:,:) - xf_lqr_ballistic,2,3);

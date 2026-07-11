@@ -31,14 +31,15 @@ Sets initial firing conditions and calls `eom2()`. Default test case:
 2. Sets initial velocity `v0` from muzzle velocity and elevation/azimuth
 3. Sets initial pointing vector `r0` including angle-of-attack offsets
 4. Computes initial angular momentum `h0` incorporating axial spin and transverse rates
-5. Propagates 15-state ODE via `ode45()` with ground impact event detection
+5. Propagates a 12-state ODE via `ode45()` with ground impact event detection (the legacy integrated Euler-angle channel was removed 2026-07-10; attitude is derived post-hoc from the pointing vector)
 6. Post-processes: apogee, impact interpolation, angle/velocity at impact
 7. Applies NUE-to-NWU coordinate transform on output
 
 **Output struct** (`ballistic_sol`):
 - `.time` -- time vector
-- `.trajectory` -- 15-column state history (NWU coordinates)
-- `.alpha`, `.beta` -- angle of attack and sideslip histories
+- `.trajectory` -- 15-column state history (NWU coordinates): cols 1:12 are the integrated 12-state solver output; cols 13:15 `[theta phi psi]` (rad) are the derived attitude backfilled post-hoc from the pointing vector (body x-axis along r, phi = 0 -- the `ballistic_deploy_state.m` convention). Interpolate attitude by interpolating r (cols 7:9), never the angle columns (psi wraps at +-pi).
+- `.alpha`, `.beta` -- velocity **direction-cosine** angles from the up/east axes (NOT angle of attack / sideslip; at the canonical launch `.alpha` starts at ~47 deg while the true AoA is ~2 deg)
+- `.total_aoa` -- true total angle of attack (deg): angle between velocity and the pointing vector (the quantity the aero lookups consume)
 - `.apogee` -- maximum altitude (m)
 - `.apogee_idx` -- index of apogee in trajectory
 - `.impact_time` -- time of ground impact (s)
@@ -47,7 +48,7 @@ Sets initial firing conditions and calls `eom2()`. Default test case:
 
 ### Function: `sixdof_ballistics(t, x, env)`
 
-15-state ODE function. State partitioning:
+12-state ODE function. State partitioning:
 
 | Indices | Symbol | Description |
 |---------|--------|-------------|
@@ -55,7 +56,8 @@ Sets initial firing conditions and calls `eom2()`. Default test case:
 | 4-6 | h | Angular momentum vector (rad/s, scaled by I_y) |
 | 7-9 | r | Unit pointing vector (body axis direction) |
 | 10-12 | e | Earth-fixed position (m) |
-| 13-15 | o | Euler angles (rad) |
+
+(The legacy 13-15 `o` Euler-angle channel was removed from the ODE state 2026-07-10 -- it was never a valid attitude; `.trajectory` cols 13:15 are now backfilled post-hoc from r, see the output section above.)
 
 **Aerodynamic model**:
 - Drag: C_D = C_D_0 + C_D_del2 * sin^2(alpha)

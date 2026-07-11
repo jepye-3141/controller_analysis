@@ -80,11 +80,23 @@ function ballistic_sol = mortar_propagate(launch, env, output)
     if isfield(launch, 'rel_tol'), rel_tol = launch.rel_tol; else, rel_tol = 1e-8;  end
     if isfield(launch, 'abs_tol'), abs_tol = launch.abs_tol; else, abs_tol = 1e-10; end
     Opt = odeset('Events', @impactEvent, 'RelTol', rel_tol, 'AbsTol', abs_tol);
-    [t,x] = ode45(@(t,x) sixdof_ballistics(t, x, env, az_0),tspan,x0,Opt);
-    
-    % Orientation angles (aoa and sideslip)
+    [t,x] = ode45(@(t,x) sixdof_ballistics(t, x, env),tspan,x0,Opt);
+
+    % Velocity direction-cosine angles (deg): alpha = angle of the velocity
+    % vector from the UP axis, beta = from the EAST axis. These are NOT
+    % angle of attack / sideslip -- the pointing vector never enters (at the
+    % canonical launch .alpha starts at ~47 deg while the true AoA is ~2 deg).
+    % Field names kept for schema stability; use .total_aoa below for AoA.
     alpha = acosd(x(:,2)./((x(:,1).^2+x(:,2).^2+x(:,3).^2).^0.5));
     beta = acosd(x(:,3)./((x(:,1).^2+x(:,2).^2+x(:,3).^2).^0.5));
+
+    % True total angle of attack (deg): angle between velocity and pointing
+    % vector -- the quantity the aero lookups consume (cos_taoa in the RHS).
+    v_norm_traj = sqrt(x(:,1).^2 + x(:,2).^2 + x(:,3).^2);
+    r_norm_traj = sqrt(x(:,7).^2 + x(:,8).^2 + x(:,9).^2);
+    cos_taoa_traj = (x(:,1).*x(:,7) + x(:,2).*x(:,8) + x(:,3).*x(:,9)) ...
+                        ./ (v_norm_traj .* r_norm_traj);
+    total_aoa = acosd(max(-1, min(1, cos_taoa_traj)));
     
     % Find the apogee of the munition's flight.
     [max_ht,I] = max(x(:,11));
@@ -94,9 +106,9 @@ function ballistic_sol = mortar_propagate(launch, env, output)
     ap_view = [ap_view(1) -ap_view(3) ap_view(2)]; % corr. to idx 10 12 11
     ap_view_min = -1*[ap_vel(1) -ap_vel(3) ap_vel(2)];
     
-    % Interpolate post-apogee time, position (range/cross-range), orientation
-    %  (alpha/beta), and velocity at altitude = 0. Alpha is the angle in the
-    %  x-y (vertical) plane; beta is the angle in the x-z (ground) plane.
+    % Interpolate post-apogee time, position (range/cross-range), the two
+    %  velocity direction-cosine angles (alpha from up, beta from east --
+    %  see above), and velocity at altitude = 0.
     impact_inputs = [t(I:end), ...
                      x(I:end,10), x(I:end,12), ...
                      alpha(I:end), beta(I:end), ...
@@ -111,16 +123,11 @@ function ballistic_sol = mortar_propagate(launch, env, output)
     vel_y_imp    = impacts(7);
     vel_z_imp    = impacts(8);
 
-    % Create 3D vector of impact direction
-    impactVect_x_coord = cosd(impact_beta)*cosd(impact_alpha);
-    impactVect_y_coord = sind(impact_beta)*cosd(impact_alpha);
-    impactVect_z_coord = sind(impact_alpha);
-    impactVect = [impactVect_x_coord, impactVect_y_coord, impactVect_z_coord];
-
-    % Find total 3D impact angle in degrees using dot product
-    vert = [0,1,0];
-    impact_angle = acosd(dot(vert,impactVect)/(norm(vert)*...
-        norm(impactVect))) - 90;
+    % Descent angle below horizontal at impact, from the interpolated impact
+    % velocity. (2026-07-10 fix: the old reconstruction treated the two
+    % direction-cosine angles as spherical coordinates and under-reported
+    % the descent angle by ~6 deg whenever crossrange velocity was nonzero.)
+    impact_angle = atand(-vel_y_imp / hypot(vel_x_imp, vel_z_imp));
 
     impact_vel = sqrt(vel_x_imp^2 + vel_y_imp^2 + vel_z_imp^2);
     
@@ -184,8 +191,11 @@ function ballistic_sol = mortar_propagate(launch, env, output)
         export_figure("figs/0_ballistic_trajectory")
     end
     
+    % .alpha/.beta are velocity direction-cosine angles from the up/east
+    % axes -- NOT AoA/sideslip. .total_aoa is the true total angle of attack.
     ballistic_sol.alpha = alpha;
     ballistic_sol.beta = beta;
+    ballistic_sol.total_aoa = total_aoa;
     ballistic_sol.apogee = max_ht;
     ballistic_sol.apogee_idx = I;
     ballistic_sol.impact_time = impact_time;
@@ -199,7 +209,7 @@ function [value, isterminal, direction] = impactEvent(t, y)
     direction  = -1;
 end
 
-function dx = sixdof_ballistics(t, x, env, az_0)
+function dx = sixdof_ballistics(t, x, env)
     %% Initialization
     omega = env.omega_earth;
     gravity = env.gravity;
@@ -258,8 +268,15 @@ function dx = sixdof_ballistics(t, x, env, az_0)
     p = (I_y / I_x) * h_dot_r;
 
     C_tilde_D        = rho*v_mag*S*C_D / (2*m);
-    C_tilde_L_a      = rho*v_mag*S*C_L_a / (2*m);
-    C_tilde_N_pa     = rho*d*C_N_pa*p / (2*m);
+    % Lift: no v_mag here -- its bracket [V^2 r - (V.r)V] below is already
+    % V^2-scale (2026-07-10 fix: an extra v_mag made lift ~V times too
+    % strong; the arc was physically impossible, 391 m apogee vs the
+    % ~255 m vacuum ceiling for a 100 m/s 45 deg launch).
+    C_tilde_L_a      = rho*S*C_L_a / (2*m);
+    % Magnus force: S restored (2026-07-10 fix: this was the only tilde
+    % coefficient lacking it, ~1/S = 89x too strong; cf. the Magnus
+    % moment below, which always had S).
+    C_tilde_N_pa     = rho*S*d*C_N_pa*p / (2*m);
     C_tilde_N_q      = rho*v_mag*S*d*(C_N) / (2*m);
     C_tilde_l_p      = rho*v_mag*S*(d^2)*C_l_p*p / (2*I_y);
     C_tilde_l_delta  = rho*(v_mag^2)*S*d*delta_f*C_l_delta / (2*I_y);
@@ -279,9 +296,15 @@ function dx = sixdof_ballistics(t, x, env, az_0)
     g(2) = -gravity*(1 - 2*e(2)/env.R);
     g(3) = 0;
 
-    lambda(1) = 2*omega*(-v(2)*cos(env.L)*sin(az_0) - v(3)*sin(env.L));
-    lambda(2) = 2*omega*(v(1)*cos(env.L)*sin(az_0) + v(3)*cos(env.L)*cos(az_0));
-    lambda(3) = 2*omega*(v(1)*sin(env.L) - v(2)*cos(env.L)*cos(az_0));
+    % Coriolis pseudo-acceleration (McCoy Ch. 9). This frame is north-fixed
+    % NUE (x = north, y = up, z = east; the firing azimuth enters through
+    % v0/r0, NOT the frame), so McCoy's frame azimuth AZ = 0 here. env.L is
+    % latitude in DEGREES (see aero_constants) -> sind/cosd. (2026-07-10
+    % fix: radian sin/cos on the degree-valued az_0/env.L, plus az_0
+    % double-counted the firing azimuth already carried by v0/r0.)
+    lambda(1) = 2*omega*(-v(3)*sind(env.L));
+    lambda(2) = 2*omega*( v(3)*cosd(env.L));
+    lambda(3) = 2*omega*( v(1)*sind(env.L) - v(2)*cosd(env.L));
 
     v_mag_sq = v_mag^2;
 

@@ -40,7 +40,11 @@ function env = aero_constants(atm_file, projectile_file)
     env.lut_C_l_delta   = readmatrix(projectile_file,'Range','A129:B130');
     env.lut_C_M_pa      = readmatrix(projectile_file,'Range','A134:C180');
 
-    % Pre-build scattered interpolants (avoid reconstructing per ODE call)
-    env.interp_C_N_pa = scatteredInterpolant(env.lut_C_N_pa(:,1), env.lut_C_N_pa(:,2), env.lut_C_N_pa(:,3));
-    env.interp_C_M_pa = scatteredInterpolant(env.lut_C_M_pa(:,1), env.lut_C_M_pa(:,2), env.lut_C_M_pa(:,3));
+    % Pre-build scattered interpolants (avoid reconstructing per ODE call).
+    % ExtrapolationMethod 'nearest' clamps queries outside the table hull
+    % (Mach 0-1.55, alpha^2 0-1316 deg^2, i.e. total AoA <= ~36 deg): the
+    % default unbounded linear extrapolation fabricated sign-changing Magnus
+    % coefficients for high-tumble launches (bugsweep 2026-07-10).
+    env.interp_C_N_pa = scatteredInterpolant(env.lut_C_N_pa(:,1), env.lut_C_N_pa(:,2), env.lut_C_N_pa(:,3), 'linear', 'nearest');
+    env.interp_C_M_pa = scatteredInterpolant(env.lut_C_M_pa(:,1), env.lut_C_M_pa(:,2), env.lut_C_M_pa(:,3), 'linear', 'nearest');
 end

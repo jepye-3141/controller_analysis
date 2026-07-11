@@ -10,6 +10,43 @@
 
 ---
 
+## STATUS 2026-07-10 — ALL 19 FIXES APPLIED + VERIFIED (author-approved)
+
+All 19 findings were fixed the same day (author approved the full high+medium+low set). Single-writer inline edits; then a MATLAB numerical check of the four physics/seeding highs and an independent ultracode static re-review of every fix.
+
+**Numerical verification** (`$CLAUDE_JOB_DIR/tmp/verify_fixes.m`, one `eom2` + one deploy seed, no sweep):
+- **Corrected canonical arc: apogee 234.01 m** (vacuum ceiling 255.62 m — now physical; was the impossible 391 m), **flight 13.86 s**, **impact (909.78, 346.00) m** — matches the finder's Python RK4 replica (apogee ~234, flight ~13.9, impact ~(909, 348)) to the meter.
+- **AoA fields**: new `.total_aoa(1) = 2.00 deg` (true launch AoA) vs `.alpha(1) = 46.92 deg` (direction-cosine-from-up) — finding 9 confirmed.
+- **Deploy seed sign**: `|rotvel0| = 0.8213` (= `|h|`), body roll rate now `+0.8127` (was `−0.8127`), and the realized world spin `−M·rotvel0` equals the shell tumble `h_nwu` to `‖·‖ = 1.6e-16` (was the exact mirror). `nose_err = 5.6e-17`.
+- All six edited `.m` files parse clean (`checkcode`).
+
+**Independent static re-review** (ultracode workflow `wf_916b46f3-ee9`, 9 adversarial verifiers + synthesis, ~748k tokens): **PASS — 9/9 groups CORRECT, 0 CONCERN/INCORRECT, 0 regressions.** Verifiers reproduced the key proofs independently: the lift/Magnus dimensional analysis (m²/s³ → m/s²; restored factor 1/S ≈ 88.4× ≈ the ~89× finding), a first-principles Coriolis derivation `a_cor = −2Ω×V` matching the applied `lambda` to <1e-18 at L=0 and L=33°, a finite-difference of the plant's Euler-rate ODE giving `‖ω_realized − (−M·w)‖ = 2.5e-10` vs 6.24 for the wrong sign, and a grep confirming the buggy own-endpoint settling target (`ballistic_pos(end`) is fully removed. No compensating double-fix (the two eom2 coefficient edits left their V²/`r×v` brackets untouched); `az_0` fully removed with zero stale 4-arg callers; both rotvel guards match `ballistic_success`'s `[T×3]` contract; the j3 checkpoint round-trip + canonical-log schema are unchanged (downstream `j3_surrogate_refit`/`replot_LUT_01` still resolve every field). One non-blocking note: the `ndims==3` rotvel guard (finding 12) would mis-orient a hypothetical single-sample `[3×1×1]` trace, but that is unreachable (a 60 s sim cannot log one sample under the 1e5 guard) and fails toward non-success — left as-is.
+
+**What was applied, by finding:**
+1. `eom2.m:261` lift — dropped the extra `v_mag` → `rho*S*C_L_a/(2*m)`.
+2. `ballistic_deploy_state.m:53` seed — `rotvel0 = -(M.'*h_nwu)` (velocity/position/attitude untouched).
+3. `eom2.m:282-284` Coriolis — `sind/cosd(env.L)`, McCoy frame azimuth = 0 (dropped `az_0`; also removed from the `sixdof_ballistics` signature + `ode45` call).
+4. `eom2.m:262` Magnus force — restored `S` → `rho*S*d*C_N_pa*p/(2*m)`.
+5. `j3_lut_regen.m` — added a physics `config_tag` to the checkpoint fingerprint (threaded through `save_ckpt` + both call sites + resume assert); **re-simulates** the reference operating point (row 41) instead of injecting the pre-fix 2026-07-08 log; removed `ref_log`; deleted the stale `logs/centroid_lookup_ckpt_j3.mat`.
+6. `sweep_landing_centroid.m:38` — `pgrep -x MATLAB_maca64 | wc -l` (the dead `-c` guard).
+7. CLAUDE.md `h = ω` — already corrected (accepted approximation at p≠0).
+8. CLAUDE.md xi 15→12 — already corrected.
+9. `eom2.m` — `.alpha/.beta` re-documented as velocity direction-cosine angles; added `.total_aoa`; `impact_angle` now a true descent angle `atand(-v_up/hypot(v_range,v_cross))`.
+10. `aero_constants.m:44-45` — Magnus `scatteredInterpolant`s clamp with `'linear','nearest'`.
+11. `analysis.m:304` — envelope drops the appended ground-impact row (`test_points(test_points==rows)=[]`).
+12. `analysis.m` (×5) + `sweep_landing_centroid.m` — rotvel shape guard keys off `ndims(Data)==3` (robust at T=3).
+13. `docs/BALLISTICS_REFERENCE.md` — 12-state ODE, cols 13:15 backfilled attitude, `.alpha/.beta`/`.total_aoa` corrected.
+14. CLAUDE.md — Aerospace Toolbox already added.
+15. `sweep_landing_centroid.m:92` — stale "cols 13:15 mangled" comment corrected.
+16. `analysis.m:2325` — fig 38 ballistic settling now measures the commanded `xf_ballistic` (snapshotted as `xf_ballistic_apogee`); diverged runs correctly score NaN → blank cell.
+17. `analysis.m` — warns if any figure-only apogee run stops before StopTime (guards the interp1 NaN tail into figs 36-38).
+18. `analysis.m:2162` — fig 36 PID ballistic panel autoscales (dropped the 5×-LQR ylim).
+19. `analysis.m:757-823` — deleted the four dead single-drone self-distance blocks.
+
+**Still pending (NOT done this session):** the schema-extended regeneration campaign (LUT N=41 all-simulated incl. the re-simulated reference row, `sat_on`/`sat_off` sweeps + TO figs, envelope + fig 39, apogee test) — now runs on the corrected model. The B4-day numbers (0.300 operating point, station diagnosis, W2 hand-off prior) stay superseded until it completes; the corrected arc is ~6 s shorter and ~160 m lower, so station geometry and arc length change materially.
+
+---
+
 ## 1. [HIGH] Ballistics_Simulation-master/eom2.m:261 — correctness
 
 **Lift-force tilde coefficient carries an extra factor v_mag, making the lift acceleration ~V times (70-100x) too strong versus McCoy eq. 9.1 and dimensionally inhomogeneous, so every trajectory flies a lift-lofted arc that is physically impossible.**

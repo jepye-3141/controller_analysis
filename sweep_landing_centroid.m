@@ -35,7 +35,11 @@ end
 % parpool fail ("worker shut down unexpectedly with status 1"). >1
 % MATLAB_maca64 process means a peer (usually a GUI session) is contending.
 if ismac
-    [~, n_str] = system("pgrep -c MATLAB_maca64 || echo 0");
+    % Count MATLAB_maca64 processes (self included, so the baseline is 1).
+    % BSD pgrep has no -c flag, so the old `pgrep -c` always failed open to 0
+    % -- this guard never fired (bugsweep 2026-07-10 finding 6). `-x` matches
+    % the exact process name and pipes to wc for a portable count.
+    [~, n_str] = system("pgrep -x MATLAB_maca64 | wc -l");
     n_matlab = str2double(strtrim(n_str));
     if n_matlab > 1
         error('sweep_landing_centroid:matlab_contention', ...
@@ -88,9 +92,10 @@ deploy_arc = linspace(0.20 * arc_3d(end), 0.80 * arc_3d(end), n_deploy);
 deploy_pct_vec = linspace(20, 80, n_deploy);
 
 % Trajectory columns: 1:3 vel (earth), 4:6 ang rates (earth), 7:9 pointing
-% unit vector, 10:12 pos. Deploy attitude derives from the pointing vector;
-% cols 13:15 are the invalid legacy Euler channel (deg/rad-mixed, NWU-
-% mangled) and are deliberately not consumed -- see ballistic_deploy_state.
+% unit vector, 10:12 pos. Deploy attitude derives from the pointing vector
+% (interpolate r, then call ballistic_deploy_state). Cols 13:15 now carry the
+% same derived attitude, backfilled post-hoc by eom2 -- valid at exact rows,
+% but interpolated stations must still interpolate r, never the angle columns.
 deploy_vel_earth  = interp1(arc_3d, ballistic_solution.trajectory(:, 1:3),   deploy_arc).';
 deploy_rvel_earth = interp1(arc_3d, ballistic_solution.trajectory(:, 4:6),   deploy_arc).';
 deploy_r          = interp1(arc_3d, ballistic_solution.trajectory(:, 7:9),   deploy_arc).';
@@ -236,7 +241,9 @@ for ptr = 1:length(sim_outputs)
     % signal the termination chart norms; logged shape varies ([3x1xT]
     % vs [Tx3]), hence the squeeze+transpose normalization.
     rot_trial  = squeeze(out_sim.rotvelout.Data);
-    if size(rot_trial, 2) ~= 3, rot_trial = rot_trial.'; end
+    % Orient to Tx3 by raw ndims (3-D [3x1xT] -> transpose; 2-D [Tx3] -> keep),
+    % robust to the T==3 case a size==3 heuristic mis-orients (finding 12).
+    if ndims(out_sim.rotvelout.Data) == 3, rot_trial = rot_trial.'; end
     ctrl_raw   = squeeze(out_sim.ctrlout.Data).';
     % Zero-pad ctrl to t_trial length (sim delay: ctrlout may lag posout).
     n_pad      = length(t_trial) - size(ctrl_raw, 1);

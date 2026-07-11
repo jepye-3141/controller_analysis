@@ -27,7 +27,9 @@ function [xi, att] = ballistic_deploy_state(v_nwu, h_nwu, r_nwu, pos_nwu)
 % 3 is negated for the z-up world -- these are the xdot(10:12) coefficient
 % rows in system_dynamics.m). M is orthogonal (M' = inv(M), det = -1), and
 % with psi = atan2(r2, r1), theta = asin(r3), phi = 0 its first column is
-% exactly r-hat.
+% exactly r-hat. Because det(M) = -1, proper vectors (velocity, position)
+% map with M.'/M as usual, but pseudovectors (angular velocity) pick up a
+% sign -- hence the negation on the rotvel0 line below.
 %
 % Returns xi = [vel_body(3); rotvel_body(3); theta; phi; psi; pos_world(3)]
 % (the *_single model seed order) and att with the angles, M, and the
@@ -49,8 +51,13 @@ function [xi, att] = ballistic_deploy_state(v_nwu, h_nwu, r_nwu, pos_nwu)
          sp*ct, sp*st*sf + cp*cf, sp*st*cf - cp*sf;
          st,   -ct*sf,           -ct*cf];
 
-    vel0    = M.' * v_nwu;   % world -> body
-    rotvel0 = M.' * h_nwu;
+    vel0    = M.' * v_nwu;   % world -> body (proper vector)
+    % Angular velocity is a PSEUDOvector: through this improper body->world
+    % map (det M = -1), body rates w realize the observable world spin -M*w
+    % (M*skew(w)*M.' = det(M)*skew(M*w)). Seeding w = -(M.'*h) therefore
+    % realizes world spin +h, matching the shell's tumble; the unnegated
+    % M.'*h seeded its exact mirror (bugsweep 2026-07-10, finding 2).
+    rotvel0 = -(M.' * h_nwu);
 
     xi = [vel0; rotvel0; theta0; phi0; psi0; pos_nwu];
 
