@@ -1,5 +1,6 @@
 % Reload trajectory_optimization workspace and re-render only TO_07.
 % Continuous landing-reachability heatmap with power-weighted centroid.
+% Source log is pre-criterion (May 2026): reproduces the historical figure; the current paper figure is TO_07_sat_on.
 clear; clc; close all;
 load('logs/trajectory_optimization_log.mat');
 cx_saved = cx;   % stash before the recompute reassigns them

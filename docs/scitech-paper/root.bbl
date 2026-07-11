@@ -1,0 +1,132 @@
+\begin{thebibliography}{19}
+\newcommand{\enquote}[1]{``#1''}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{\discretionary{}{}{}https://doi.org/#1}\else
+  \providecommand{\doi}[1]{\discretionary{}{}{}\urlstyle{rm}\url{https://doi.org/#1}}\fi
+
+\bibitem[{Bouman et~al.(2020)Bouman, Nadan, Anderson, Pastor, Izraelevitz,
+  Burdick, and Kennedy}]{refs:Bouman2019}
+Bouman, A., Nadan, P., Anderson, M., Pastor, D., Izraelevitz, J., Burdick, J.,
+  and Kennedy, B., \enquote{Design and Autonomous Stabilization of a
+  Ballistically-Launched Multirotor,} \emph{2020 IEEE International Conference
+  on Robotics and Automation (ICRA)}, 2020, pp. 8511--8517.
+\newblock \doi{10.1109/ICRA40945.2020.9197542}.
+
+\bibitem[{Denton et~al.(2025)Denton, Benedict, and Kang}]{refs:Denton2025}
+Denton, H., Benedict, M., and Kang, H., \enquote{System identification of a
+  thrust-vectoring, coaxial-rotor-based gun-launched micro air vehicle in
+  hovering flight,} \emph{International Journal of Micro Air Vehicles},
+  Vol.~17, 2025.
+\newblock \doi{10.1177/17568293251361078}.
+
+\bibitem[{Harper(2025)}]{refs:Harper2025}
+Harper, J., \enquote{Army's Fiscal 2026 Budget Proposal Aims to Equip Infantry
+  Brigades with More Kamikaze Drones,} , Jun. 2025.
+\newblock
+  \urlprefix\url{https://defensescoop.com/2025/06/27/army-fiscal-2026-budget-request-loitering-munitions-drones-lasso/}.
+
+\bibitem[{Starks et~al.(2024)Starks, Chu, Leung, Blewer, Simmons, Hansen,
+  Joiner, Caba{\~n}as, Harmody, Nelson, McNally, Ornato, Granger, Chan, and
+  Mark}]{refs:Starks2024}
+Starks, M.~A., Chu, J., Leung, K. H.~B., Blewer, A.~L., Simmons, D., Hansen,
+  C.~M., Joiner, A., Caba{\~n}as, J.~G., Harmody, M.~R., Nelson, R.~D.,
+  McNally, B.~F., Ornato, J.~P., Granger, C.~B., Chan, T. C.~Y., and Mark,
+  D.~B., \enquote{Combinations of First Responder and Drone Delivery to Achieve
+  5-Minute {AED} Deployment in {OHCA},} \emph{{JACC}: Advances}, Vol.~3, No. 7,
+  Part 2, 2024, p. 101033.
+\newblock \doi{10.1016/j.jacadv.2024.101033}.
+
+\bibitem[{Liang and Delahaye(2019)}]{refs:Liang2019}
+Liang, M., and Delahaye, D., \enquote{Drone Fleet Deployment Strategy for Large
+  Scale Agriculture and Forestry Surveying,} \emph{2019 IEEE Intelligent
+  Transportation Systems Conference (ITSC)}, 2019, pp. 4495--4500.
+\newblock \doi{10.1109/ITSC.2019.8917235}.
+
+\bibitem[{Michelena(2025)}]{refs:Michelena2025}
+Michelena, T., \enquote{Swarm Technology in Sustainment Operations,} , Jan.
+  2025.
+\newblock
+  \urlprefix\url{https://www.army.mil/article/282467/swarm_technology_in_sustainment_operations}.
+
+\bibitem[{Xiong and Zhang(2016)}]{refs:Xiong2016}
+Xiong, J.-J., and Zhang, G., \enquote{Discrete-time sliding mode control for a
+  quadrotor {UAV},} \emph{Optik}, Vol. 127, No.~8, 2016, pp. 3718--3722.
+\newblock \doi{10.1016/j.ijleo.2016.01.010}.
+
+\bibitem[{Xu et~al.(2020)Xu, Xia, Zhai, and Ma}]{refs:Xu2020}
+Xu, G., Xia, Y., Zhai, D.-H., and Ma, D., \enquote{Adaptive Prescribed
+  Performance Terminal Sliding Mode Attitude Control for Quadrotor Under Input
+  Saturation,} \emph{IET Control Theory \& Applications}, Vol.~14, No.~17,
+  2020, pp. 2473--2480.
+\newblock \doi{10.1049/iet-cta.2019.0488}.
+
+\bibitem[{Kuang and Chen(2024)}]{refs:Kuang2024}
+Kuang, J., and Chen, M., \enquote{Adaptive Sliding Mode Control for Trajectory
+  Tracking of Quadrotor Unmanned Aerial Vehicles Under Input Saturation and
+  Disturbances,} \emph{Drones}, Vol.~8, No.~11, 2024, p. 614.
+\newblock \doi{10.3390/drones8110614}.
+
+\bibitem[{Shao et~al.(2022)Shao, Sun, Yao, Liu, and Wu}]{refs:Shao2022}
+Shao, X., Sun, G., Yao, W., Liu, J., and Wu, L., \enquote{Adaptive Sliding Mode
+  Control for Quadrotor {UAV}s With Input Saturation,} \emph{IEEE/ASME
+  Transactions on Mechatronics}, Vol.~27, No.~3, 2022, pp. 1498--1509.
+\newblock \doi{10.1109/TMECH.2021.3094575}.
+
+\bibitem[{Faessler et~al.(2017)Faessler, Falanga, and
+  Scaramuzza}]{refs:Faessler2017}
+Faessler, M., Falanga, D., and Scaramuzza, D., \enquote{Thrust Mixing,
+  Saturation, and Body-Rate Control for Accurate Aggressive Quadrotor Flight,}
+  \emph{IEEE Robotics and Automation Letters}, Vol.~2, No.~2, 2017, pp.
+  476--482.
+\newblock \doi{10.1109/LRA.2016.2640362}.
+
+\bibitem[{Mueller and D'Andrea(2013)}]{refs:Mueller2013}
+Mueller, M.~W., and D'Andrea, R., \enquote{A Model Predictive Controller for
+  Quadrocopter State Interception,} \emph{2013 European Control Conference
+  (ECC)}, Z{\"u}rich, Switzerland, 2013, pp. 1383--1389.
+\newblock \doi{10.23919/ECC.2013.6669415}.
+
+\bibitem[{Wang et~al.(2005)Wang, Cao, and Sun}]{refs:Wang2005}
+Wang, Y., Cao, Y.-Y., and Sun, Y.-X., \enquote{Stability Analysis and
+  Anti-Windup Design for Discrete-Time Systems by a Saturation-Dependent
+  {Lyapunov} Function Approach,} \emph{Proceedings of the 16th {IFAC} World
+  Congress}, Vol.~38, 2005, pp. 759--764.
+\newblock \doi{10.3182/20050703-6-CZ-1902.00782}.
+
+\bibitem[{Jiang and Wang(2001)}]{refs:JiangWang2001}
+Jiang, Z.-P., and Wang, Y., \enquote{Input-to-State Stability for Discrete-Time
+  Nonlinear Systems,} \emph{Automatica}, Vol.~37, No.~6, 2001, pp. 857--869.
+\newblock \doi{10.1016/S0005-1098(01)00028-0}.
+
+\bibitem[{Sarpturk et~al.(1987)Sarpturk, Istefanopulos, and
+  Kaynak}]{refs:Sarpturk1987}
+Sarpturk, S.~Z., Istefanopulos, Y., and Kaynak, O., \enquote{On the Stability
+  of Discrete-Time Sliding Mode Control Systems,} \emph{IEEE Transactions on
+  Automatic Control}, Vol.~32, No.~10, 1987, pp. 930--932.
+\newblock \doi{10.1109/TAC.1987.1104468}.
+
+\bibitem[{Tahir et~al.(2020)Tahir, B{\"o}ling, Haghbayan, and
+  Plosila}]{refs:Tahir2020}
+Tahir, A., B{\"o}ling, J.~M., Haghbayan, M.-H., and Plosila, J.,
+  \enquote{Comparison of Linear and Nonlinear Methods for Distributed Control
+  of a Hierarchical Formation of {UAV}s,} \emph{IEEE Access}, Vol.~8, 2020, pp.
+  95667--95680.
+\newblock \doi{10.1109/ACCESS.2020.2988773}.
+
+\bibitem[{McCoy(1999)}]{refs:mccoy1999modern}
+McCoy, R.~L., \emph{Modern Exterior Ballistics: The Launch and Flight Dynamics
+  of Symmetric Projectiles}, Schiffer Publishing, Limited, 1999.
+\newblock \urlprefix\url{https://books.google.com/books?id=ay5UPQAACAAJ}.
+
+\bibitem[{Pye(2025)}]{refs:github}
+Pye, J.~E., \enquote{Controller Analysis Simulation Environment,} , 2025.
+\newblock \urlprefix\url{https://github.com/jepye-3141/controller_analysis#}.
+
+\bibitem[{Anthropic(2025)}]{refs:claude}
+Anthropic, \enquote{Claude Opus 4,} , 2025.
+\newblock \urlprefix\url{https://www.claude.ai}.
+
+\end{thebibliography}

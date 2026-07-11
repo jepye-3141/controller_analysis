@@ -1,3 +1,6 @@
+% LHS lookup table over the 6-D launch space (Vo, el, az, w_z0, w_y0, p):
+% one sweep_landing_centroid(_, false) per sample; N=20, rng(0), ~5 h total.
+% Writes logs/centroid_lookup_log.mat (lookup, ranges, X, N, field_names) + figs/LUT_01.
 close all; clear all; clc
 Simulink.sdi.clear()
 set_param(0, 'CacheFolder', '');

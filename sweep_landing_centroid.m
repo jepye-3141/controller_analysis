@@ -5,35 +5,35 @@ function out = sweep_landing_centroid(traj_params, visualize)
 %
 % traj_params : struct, all fields required:
 %   .Vo .el .az .w_z0 .w_y0 .p .alpha_0 .beta_0 .x_0 .y_0 .z_0 .t_max
+%   Optional: .saturation_on -> constants_struct.saturation_on; .label
+%   suffixes figure names and the saved log ("_sat_on" etc.).
 % visualize   : bool, default false. When true, render TO_01..TO_07 figures
-%               and save trajectory_optimization_log.mat.
+%               and save logs/trajectory_optimization_log<label>.mat
+%               (whole-workspace save; reload 'out' via load(log, "out")).
 %
 % out : struct
-%   .p_centroid          [cx; cy; 0]
-%   .reachability_pct    fraction of attempted trials stable, normalized
-%                        over cells with a valid target_deploy_idx
-%                        (boundary cells excluded). In [0, 1].
+%   .p_centroid          [cx; cy; 0]; NaN when zero trials succeed
+%   .reachability_pct    stable fraction of attempted trials (cells with
+%                        a valid target_deploy_idx; boundary excluded)
 %   .radial_profile      r_bins, mean_ratio, peak_ratio, half_radius
 %   .ballistic_solution  full mortar struct
 %   .n_errored           parsim trials whose ErrorMessage was non-empty
 %
 % Per-trial success ('stable') is scored post-hoc by ballistic_success:
 % full duration (blowup guard never tripped) + final XY within reach_tol
-% + velocity ratio <= 2 + rotation-rate ratio <= 2, all over the whole
-% trace. The rotation trace is the model's rotvelout (plant Euler-angle
-% rates -- the same signal the termination chart norms). Per-trial
-% diagnostics land in results(i,k,nb).criteria.
+% + velocity ratio <= 2 (whole trace) + rotation-rate ratio <= 2 for
+% t > 1 s (grace window). The rotation trace is the model's rotvelout
+% (plant Euler-angle rates -- the same signal the termination chart
+% norms). Per-trial diagnostics land in results(i,k,nb).criteria.
 
 if nargin < 2
     visualize = false;
 end
 
-%% Guard: refuse to run if another MATLAB session is open.
-% parpool('Processes', ...) fails ("worker shut down unexpectedly with
-% status 1") when a second MATLAB process is holding Parallel Computing
-% Toolbox license seats. Counting MATLAB_maca64 processes is the cheapest
-% reliable signal on macOS; a value > 1 means at least one peer (almost
-% always a GUI session) is contending for the license.
+%% Guard: refuse to run if another MATLAB session is open (macOS).
+% A second MATLAB process holding Parallel Computing Toolbox seats makes
+% parpool fail ("worker shut down unexpectedly with status 1"). >1
+% MATLAB_maca64 process means a peer (usually a GUI session) is contending.
 if ismac
     [~, n_str] = system("pgrep -c MATLAB_maca64 || echo 0");
     n_matlab = str2double(strtrim(n_str));
@@ -63,8 +63,7 @@ STABILIZE = 4;
 
 %% Sweep configuration
 n_deploy   = 8;             % deployment points sampled along 3D mission trajectory
-% Cross-track landing offsets (m): center + +-100 + +-200.
-% Positive = left of travel (CCW), negative = right.
+% Cross-track landing offsets (m); positive = left of travel (CCW).
 ct_offsets = [0, 100, -100, 200, -200];
 ct_names   = ["center", "left100", "right100", "left200", "right200"];
 n_ct       = length(ct_offsets);
@@ -72,7 +71,7 @@ neighbor_offsets = [-1, 0, 1, 2];         % target deploy-index offsets
 nb_names         = ["behind1", "inplace", "ahead1", "ahead2"];
 n_nb             = length(neighbor_offsets);
 sim_time   = 60;            % per-trial sim stop time (s)
-reach_tol  = 10;            % absolute 3D position tolerance for "reached"/settled (m)
+reach_tol  = 10;            % tolerance (m): final XY for success, 3D for time_to_land
 vel_tol    = 5;             % velocity magnitude threshold for "landed" (m/s)
 
 %% Mission trajectory
@@ -88,11 +87,13 @@ deploy_arc = linspace(0.20 * arc_3d(end), 0.80 * arc_3d(end), n_deploy);
 
 deploy_pct_vec = linspace(20, 80, n_deploy);
 
-% Interpolate full trajectory state at each deployment arc length
-% Columns 1:3 vel (earth), 4:6 ang rates (earth), 13:15 Euler deg, 10:12 pos
+% Trajectory columns: 1:3 vel (earth), 4:6 ang rates (earth), 7:9 pointing
+% unit vector, 10:12 pos. Deploy attitude derives from the pointing vector;
+% cols 13:15 are the invalid legacy Euler channel (deg/rad-mixed, NWU-
+% mangled) and are deliberately not consumed -- see ballistic_deploy_state.
 deploy_vel_earth  = interp1(arc_3d, ballistic_solution.trajectory(:, 1:3),   deploy_arc).';
 deploy_rvel_earth = interp1(arc_3d, ballistic_solution.trajectory(:, 4:6),   deploy_arc).';
-deploy_rot_deg    = interp1(arc_3d, ballistic_solution.trajectory(:, 13:15), deploy_arc).';
+deploy_r          = interp1(arc_3d, ballistic_solution.trajectory(:, 7:9),   deploy_arc).';
 deploy_pos        = interp1(arc_3d, ballistic_solution.trajectory(:, 10:12), deploy_arc).';
 
 % Per-deploy cross-track unit vector (perpendicular to local horizontal velocity).
@@ -111,7 +112,7 @@ for i = 1:n_deploy
     end
 end
 
-% Landing positions per deploy point, per cross-track variant: 3 x n_deploy x n_ct
+% Landing positions: 3 x n_deploy x n_ct
 land_pos = zeros(3, n_deploy, n_ct);
 for k = 1:n_ct
     land_pos(1, :, k) = deploy_pos(1, :) + ct_offsets(k) * ct_dir(1, :);
@@ -137,22 +138,20 @@ results = repmat(struct( ...
     'criteria',          [], ...
     'trajectory',        []), n_deploy, n_ct, n_nb);
 
-% Pre-pass: build a Simulink.SimulationInput per valid (i,k,nb) trial,
-% plus a metadata array keyed by flat trial index, so the parallel run is
-% pure: a flat list of inputs in, a flat list of outputs out. Boundary
-% trials (target_idx out of range) are recorded into results directly and
+% Pre-pass: one SimulationInput + metadata entry per valid (i,k,nb) trial,
+% flat-indexed so the parallel run is pure (flat inputs -> flat outputs).
+% Boundary trials (target_idx out of range) go straight into results and
 % skip the queue.
 n_trials_max = n_deploy * n_ct * n_nb;
 sim_inputs = repmat(Simulink.SimulationInput("discrete_smc_swarm_single"), 1, n_trials_max);
 trial_meta = repmat(struct('i', 0, 'k', 0, 'nb', 0, 'xf', zeros(3,1)), 1, n_trials_max);
 trial_ptr  = 0;
 
-% Build a template SimulationInput with the per-sweep statics applied once.
-% Per-trial copies then only setVariable the small payload (xi, xf_ballistic,
-% simcase), which avoids reapplying the 7-entry static-vars list ~136 times.
-% (Statics referenced by the model: Simulink.findVars on
-% discrete_smc_swarm_single gives A, B, constants_struct,
-% constants_struct_bus, dt, x0_step, xf.)
+% Template SimulationInput carries the 7 statics the model reads from base
+% workspace (Simulink.findVars: A, B, constants_struct, constants_struct_bus,
+% dt, x0_step, xf); per-trial copies setVariable only xi, xf_ballistic,
+% simcase. TransferBaseWorkspaceVariables is off, so any new model dependency
+% MUST be added to this static block or trials silently fail/error.
 simIn_template = Simulink.SimulationInput("discrete_smc_swarm_single");
 simIn_template = simIn_template.setModelParameter( ...
     'StopTime', num2str(sim_time), 'SimulationMode', 'rapid-accelerator');
@@ -164,20 +163,16 @@ simIn_template = simIn_template.setVariable('dt', dt);
 simIn_template = simIn_template.setVariable('x0_step', x0_step);
 simIn_template = simIn_template.setVariable('xf', xf);
 
-% (No fail-fast Simulink.findVars audit here: it evaluates block parameters
-% and would error on the per-trial vars not yet in base workspace. The
-% post-run n_errored assert below catches the same silent-failure mode
-% after ~30 s of parsim startup if a setVariable name is missing.)
+% (No fail-fast findVars audit here: it evaluates block parameters and
+% errors on per-trial vars not yet in base workspace. The n_errored assert
+% below catches a missing setVariable name, ~30 s into parsim startup.)
 
 for i = 1:n_deploy
-    rot0 = deg2rad(deploy_rot_deg(:, i));
-    x0   = deploy_pos(:, i);
-    rot  = eul2rotm([rot0(3) rot0(2) rot0(1)], "ZYX");
-
-    vel0    = rot*deploy_vel_earth(:, i);  % earth -> body
-    rotvel0 = rot*deploy_rvel_earth(:, i); % earth -> body
-
-    xi = [vel0; rotvel0; rot0; x0];
+    % Deploy seed: attitude from the pointing vector, velocities/rates
+    % mapped world->body consistently with system_dynamics.m (2026-07-10
+    % fix; see ballistic_deploy_state.m for the convention).
+    xi = ballistic_deploy_state(deploy_vel_earth(:, i), ...
+        deploy_rvel_earth(:, i), deploy_r(:, i), deploy_pos(:, i));
 
     for k = 1:n_ct
         for nb = 1:n_nb
@@ -212,7 +207,6 @@ end
 sim_inputs = sim_inputs(1:trial_ptr);
 trial_meta = trial_meta(1:trial_ptr);
 
-% Run all trials in parallel
 n_workers = 12;
 if isempty(gcp('nocreate'))
     parpool('Processes', n_workers);
@@ -222,7 +216,7 @@ fprintf('Running %d trials on %d workers...\n', length(sim_inputs), pool.NumWork
 sim_outputs = parsim(sim_inputs, 'ShowProgress', 'on', 'StopOnError', 'off', ...
                      'TransferBaseWorkspaceVariables', 'off');
 
-% Post-pass: same success-detection logic as before, applied to each output
+% Post-pass: score each SimulationOutput into results(i,k,nb)
 n_errored = 0;
 for ptr = 1:length(sim_outputs)
     meta = trial_meta(ptr);
@@ -244,8 +238,7 @@ for ptr = 1:length(sim_outputs)
     rot_trial  = squeeze(out_sim.rotvelout.Data);
     if size(rot_trial, 2) ~= 3, rot_trial = rot_trial.'; end
     ctrl_raw   = squeeze(out_sim.ctrlout.Data).';
-    % Zero-pad ctrl at the start to match t_trial length (sim delay
-    % means ctrlout may have fewer samples than posout).
+    % Zero-pad ctrl to t_trial length (sim delay: ctrlout may lag posout).
     n_pad      = length(t_trial) - size(ctrl_raw, 1);
     if n_pad > 0
         ctrl_trial = [zeros(n_pad, size(ctrl_raw, 2)); ctrl_raw];
@@ -253,9 +246,8 @@ for ptr = 1:length(sim_outputs)
         ctrl_trial = ctrl_raw;
     end
 
-    % Post-processing success criterion (paper eq:ballistic-success):
-    % full duration + final-XY tolerance + velocity ratio + rotation-rate
-    % ratio, all over the whole trace.
+    % Success criterion (paper eq:ballistic-success): full duration +
+    % final-XY tol + velocity ratio (whole trace) + rotation ratio (t > 1 s).
     [stable, crit] = ballistic_success(t_trial, pos_trial, vel_trial, ...
         meta.xf(1:2), norm(deploy_vel_earth(:, meta.i)), sim_time, ...
         ReachTol=reach_tol, RotVel=rot_trial);
@@ -310,6 +302,7 @@ land_z_flat = reshape(land_pos(3,:,:), [], 1);
 ratio_flat  = landing_ratio(:);
 
 %% Power-weighted centroid
+% 'natural' interpolant; the centroid is method-sensitive ('linear' shifts it ~1 m).
 F_heat = scatteredInterpolant(land_x_flat, land_y_flat, ratio_flat, 'natural', 'none');
 n_grid = 200;
 [Xg, Yg] = meshgrid(linspace(min(land_x_flat), max(land_x_flat), n_grid), ...
@@ -331,10 +324,9 @@ if tot_w > 0
         'sweep_landing_centroid: centroid y = %.2f outside grid [%.2f, %.2f]', ...
         cy, min(land_y_flat), max(land_y_flat));
 else
-    % Zero-reachability sweep (a legitimate outcome, e.g. the naive
-    % per-rotor-clipped baseline): the power-weighted centroid is
-    % undefined. Degrade gracefully -- keep NaN centroid, still save the
-    % log and render figures (NaN points are silently skipped by plot).
+    % Zero-reachability sweep (legitimate: the per-rotor-clipped baseline
+    % lands 0/140) -- centroid undefined. Keep NaN, still save the log and
+    % render figures (plot skips NaN points).
     warning('sweep_landing_centroid:zero_reachability', ...
         'no trial satisfied the success criterion; centroid and half_radius are NaN');
     cx = NaN; cy = NaN;
@@ -397,8 +389,6 @@ if ~visualize
 end
 
 %% Figures
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 close all;
 set_default_fonts();
 
@@ -462,7 +452,7 @@ ylabel("\|ctrlout\|")
 xlim([0 10])
 export_figure("figs/TO_06_control_norm" + label_suffix)
 
-%% Settling time: first time the trajectory comes within reach_tol (absolute) of target
+%% Settling time: first XY pass within reach_tol of target
 settle_t_arr = nan(n_deploy, n_ct, n_nb);
 for r = 1:n_trials
     tr  = results(r).trajectory;
@@ -536,12 +526,11 @@ title("dSMC deployment-point success rate")
 export_figure("figs/TO_03_stabilization_envelope" + label_suffix)
 
 %% Landing-point reachability
-% Each landing point (target deploy idx j, ct k) is attempted by up to 3
-% deploys (j-1, j, j+1). Color the landing marker by success ratio and the
-% dotted deploy->target line by that specific trial's success/failure.
+% Each landing point (target deploy idx j, ct k) is attempted by up to 4
+% deploys (j-2..j+1, per neighbor_offsets). Landing markers colored by
+% success ratio; dotted deploy->target lines by that trial's outcome.
 
-% Earliest deploy index that successfully reached each (tgt, k) landing point.
-% Used below to bold the trace from that deploy.
+% Earliest deploy to successfully reach each (tgt, k) landing point; its trace is bolded.
 first_reach_deploy = nan(n_deploy, n_ct);
 for tgt = 1:n_deploy
     for k = 1:n_ct
@@ -598,10 +587,9 @@ for r = 1:n_trials
     end
 end
 
-% Magenta-step colormap: a unique color marks "no deploy reached this point"
-% (ratio == 0), with the ryg gradient covering >0. The step at 0 is rendered
-% by extending the colormap below 0 in clim space; data at exactly 0 is
-% remapped into that band so the marker color matches the colorbar.
+% Magenta step marks ratio == 0 ("no deploy reached this point"); the ryg
+% gradient covers >0. The band extends the colormap below 0 in clim space;
+% exact-zero data is remapped into it so marker color matches the colorbar.
 n_ryg     = size(cmap_ryg, 1);
 n_band    = 4;                            % visible magenta band height
 zero_band = repmat([1 0 1], n_band, 1);
@@ -633,7 +621,7 @@ end
 export_figure("figs/TO_04_landing_envelope" + label_suffix)
 
 %% Landing-reachability heatmap and centroid (TO_07)
-% Same 84 (x, y, ratio) samples as TO_04, interpolated into a continuous
+% Same landing-point (x, y, ratio) samples as TO_04, interpolated into a
 % surface at z=0 so the trajectory plots above it. The p=2 weighting pulls
 % the centroid toward the dense core; at p=1, isolated 1.0 cells skew it.
 figure

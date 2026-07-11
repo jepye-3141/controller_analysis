@@ -1,12 +1,12 @@
 function [success, info] = ballistic_success(t, pos, vel, target_xy, v0_norm, expected_T, opts)
 % ballistic_success  Post-processing success criterion for STABILIZE trials.
 %
-% Configurable implementation of the paper's stabilization/landing success
-% criterion (eq:ballistic-success), applied to logged sim data AFTER the
-% run. The in-model termination chart is deliberately NOT the success
-% criterion -- it is a pure numerical-blowup guard (norms >= 1e5) whose only
-% job is to stop destabilized sims early; a guard-stopped trial simply
-% fails condition (a) below.
+% The paper's stabilization/landing success criterion (eq:ballistic-success),
+% applied to logged sim data after the run. The in-model termination chart is
+% NOT the criterion -- a numerical-blowup guard (norms >= 1e5) that stops
+% destabilized sims early; a guard-stopped trial fails condition (a) below.
+% Callers: analysis.m envelope (30 s, all five arms) and
+% sweep_landing_centroid (60 s sweep trials).
 %
 %   success = (a) && (b) && (c) && (d), where
 %     (a) duration:  t(end) >= expected_T - 1e-6   (guard never tripped)
@@ -14,15 +14,14 @@ function [success, info] = ballistic_success(t, pos, vel, target_xy, v0_norm, ex
 %     (c) velocity:  max_t ||vel(t,:)|| <= VelRatioMax * v0_norm
 %                    (every logged sample; skipped when vel is empty)
 %     (d) rotation:  max_{t > RotGraceT} ||RotVel(t,:)|| <= RotRatioMax * RotRefNorm
-%                    (skipped when RotVel is empty. The single models log
-%                    rotvelout = the plant's Euler-angle rates
-%                    [thetadot phidot psidot] -- the same signal the
-%                    termination charts norm. The first RotGraceT seconds
-%                    are exempt: deployment hands the vehicle over tumbling,
-%                    so early exceedances reflect the ballistic-separation
-%                    transient, not the controller. Empirically all sweep
+%                    (skipped when RotVel is empty. RotVel is the models'
+%                    rotvelout: plant Euler-angle rates [thetadot phidot
+%                    psidot], not body rates -- the same signal the
+%                    termination charts norm. The grace window exempts the
+%                    ballistic-separation arrest transient (deployment
+%                    hands the vehicle over tumbling); empirically sweep
 %                    violations start by t~=0.06 s and none persist past
-%                    3.8 s; W=1 s excludes the arrest transient only.)
+%                    3.8 s, so 1 s excludes the transient only.)
 %
 % Inputs:
 %   t          Tx1 time vector of the logged series
@@ -46,8 +45,9 @@ function [success, info] = ballistic_success(t, pos, vel, target_xy, v0_norm, ex
 %   success    logical
 %   info       struct with per-condition flags (duration_ok, position_ok,
 %              velocity_ok, rotation_ok), *_checked flags marking skipped
-%              conditions, and the measured extrema (t_end, final_miss,
-%              max_speed[_ratio], max_rot[_ratio]).
+%              conditions, and measured extrema (t_end, final_miss,
+%              max_speed[_ratio]; max_rot[_ratio] is whole-trace,
+%              max_rot_post[_ratio] is the criterion's post-grace value).
 
 arguments
     t (:,1) double
@@ -87,10 +87,9 @@ else
 end
 
 % (d) rotation-rate ratio after the grace window (when rates are logged).
-% max_rot/max_rot_ratio report the whole trace for diagnostics; the
-% criterion uses the post-window extremum, exempting the ballistic-
-% separation arrest transient. A trial with no samples after the window
-% passes (d) vacuously -- it fails (a) anyway.
+% max_rot[_ratio] is whole-trace diagnostics; the criterion uses the
+% post-window extremum. No post-window samples -> (d) passes vacuously
+% (such a trial fails (a) anyway).
 info.rotation_checked = ~isempty(opts.RotVel);
 info.rot_grace_T = opts.RotGraceT;
 if info.rotation_checked

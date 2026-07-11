@@ -1,0 +1,7 @@
+
+# Ignore these files:
+*.asv
+
+#archive files
+archive/
+

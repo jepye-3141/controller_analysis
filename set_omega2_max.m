@@ -1,7 +1,7 @@
 function set_omega2_max(val)
-% Programmatically rewrite the Omega2_max line in dsmc_constraints.m.
-% Used by the saturation sweep to vary the per-rotor Omega^2 saturation
-% bound without manual file editing.
+% set_omega2_max  Rewrite the Omega2_max literal in dsmc_constraints.m on
+% disk (regexprep + fwrite) -- a source edit, not a runtime parameter.
+% Saturation-sweep helper; leaves that file git-dirty at the last value set.
 fp = fullfile(fileparts(mfilename('fullpath')), 'dsmc_constraints.m');
 s  = fileread(fp);
 if isempty(regexp(s, 'Omega2_max\s*=\s*[\d.eE+\-]+\s*;', 'once'))

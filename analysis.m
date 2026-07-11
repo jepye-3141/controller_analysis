@@ -11,7 +11,6 @@ SPIRAL = 3;
 STABILIZE = 4;
 
 
-%
 load_system("lqr_swarm")
 load_system("pid_redux")
 load_system("smc_swarm")
@@ -146,7 +145,7 @@ step_out_discrete_smc_uncertainty = sim("discrete_smc_swarm")
 % No parametric uncertainty
 m = 0.8; % kg
 
-% Step 2: Apply current state to A, B, C, D matrices
+% rebuild linearized A, B at nominal mass
 A = [0 0 0 0 0 0 -g 0 0 0 0 0;
      0 0 0 0 0 0 0 g 0 0 0 0;
      0 0 0 0 0 0 0 0 0 0 0 0;
@@ -176,7 +175,6 @@ A1 = A; A2 = A; A3 = A;
 B1 = B; B2 = B; B3 = B;
 
 %% Step decrease trajectory
-% Initial conditions
 vel0 = [0; 0; 0];
 rotvel0 = [1; 1; 0];
 rot0 = [0; 0; 0];
@@ -194,7 +192,7 @@ step_out_smc = sim("smc_swarm")
 set_param("discrete_smc_swarm","StopTime","50", 'SimulationMode','Rapid')
 step_out_discrete_smc = sim("discrete_smc_swarm")
 
-%% Weird trajectories
+%% Figure-8 and spiral trajectories
 vel0 = [0; 0; 0];
 rotvel0 = [0; 0; 0];
 rot0 = [0; 0; 0];
@@ -232,12 +230,12 @@ launch.w_z0    = 1;    % initial pitch rate in rad/s (pos nose up)
 launch.w_y0    = 0.5;  % initial transverse yaw rate in rad/s (pos for left yaw)
 launch.alpha_0 = 2;    % exit elevation (deg)
 launch.beta_0  = -0.5; % exit azimuth (deg)
-% initial position of munition center of gravity (CG) wrt intertial frame
+% munition CG initial position wrt inertial frame
 launch.x_0     = 0;    % x-axis (m) - range direction
 launch.y_0     = 0;    % y-axis (m) - altitude
 launch.z_0     = 0;    % z-axis (m) - cross-range direction
-launch.t_max   = 300;  % sim end time
-launch.p       = 0;    % initial spin rate in rad/s
+launch.t_max   = 300;  % sim end time (s)
+launch.p       = -8.379; % axial launch spin (rad/s); restores prior deploy rate (apogee h.r~-0.81)
 
 ballistic_solution = eom2(launch, env, false);
 
@@ -247,14 +245,11 @@ load_system("smc_swarm_single")
 load_system("discrete_smc_swarm_single")
 
 deploy_point = ballistic_solution.trajectory(ballistic_solution.apogee_idx, :).';
-rot0 = deg2rad(deploy_point(13:15));
-x0 = deploy_point(10:12);
-rot = eul2rotm([rot0(3) rot0(2) rot0(1)], "ZYX");
-
-vel0 = rot*deploy_point(1:3); % earth -> body
-rotvel0 = rot*deploy_point(4:6); % earth -> body
-
-xi = [vel0; rotvel0; rot0; x0];
+% Deploy seed: attitude from the pointing vector (cols 7:9), velocities and
+% rates mapped world->body consistently (2026-07-10 fix; cols 13:15 are the
+% invalid legacy Euler channel -- see ballistic_deploy_state.m).
+xi = ballistic_deploy_state(deploy_point(1:3), deploy_point(4:6), ...
+    deploy_point(7:9), deploy_point(10:12));
 xf_ballistic = [xi(10:11,:);0];
 
 simcase = STABILIZE;
@@ -277,12 +272,12 @@ launch.w_z0    = 1;    % initial pitch rate in rad/s (pos nose up)
 launch.w_y0    = 0.5;  % initial transverse yaw rate in rad/s (pos for left yaw)
 launch.alpha_0 = 2;    % exit elevation (deg)
 launch.beta_0  = -0.5; % exit azimuth (deg)
-% initial position of munition center of gravity (CG) wrt intertial frame
+% munition CG initial position wrt inertial frame
 launch.x_0     = 0;    % x-axis (m) - range direction
 launch.y_0     = 0;    % y-axis (m) - altitude
 launch.z_0     = 0;    % z-axis (m) - cross-range direction
-launch.t_max   = 300;  % sim end time
-launch.p       = 0;    % initial spin rate in rad/s
+launch.t_max   = 300;  % sim end time (s)
+launch.p       = -8.379; % axial launch spin (rad/s); restores prior deploy rate (apogee h.r~-0.81)
 
 ballistic_solution = eom2(launch, env, false);
 
@@ -296,14 +291,8 @@ envelope_dsmc_sat_mask   = false(1, n_test);
 for i = 1:size(test_points,2)
     idx = test_points(i);
     deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
-    x0 = deploy_point(10:12);
-    rot = eul2rotm([rot0(3) rot0(2) rot0(1)], "ZYX");
-    
-    vel0 = rot*deploy_point(1:3); % earth -> body
-    rotvel0 = rot*deploy_point(4:6); % earth -> body
-    
-    xi = [vel0; rotvel0; rot0; x0];
+    xi = ballistic_deploy_state(deploy_point(1:3), deploy_point(4:6), ...
+        deploy_point(7:9), deploy_point(10:12));
     xf_ballistic = [xi(10:11,:);0];
     
     simcase = STABILIZE;
@@ -321,13 +310,13 @@ for i = 1:size(test_points,2)
     constants_struct.unconstrained = false;   % sat arm: Plan A+ handler (+ per-rotor clip)
     discrete_smc_trial_sat   = sim("discrete_smc_swarm_single")
 
-    % Post-processing success criterion (eq:ballistic-success) via
-    % ballistic_success: full 30 s (blowup guard never tripped) + final XY
-    % within 10 m of deploy + velocity ratio <= 2 + rotation-rate ratio
-    % <= 2, all over the whole trace. rotvelout logs the plant's
-    % Euler-angle rates [thetadot phidot psidot] (system_dynamics.m:44-46)
-    % -- the same signal the termination charts norm. Its Data shape
-    % differs per model ([3x1xT] vs [Tx3]), hence the squeeze+transpose.
+    % Success scored post-hoc by ballistic_success (eq:ballistic-success):
+    % full 30 s (blowup guard never tripped) + final XY within 10 m of
+    % deploy + velocity ratio <= 2 whole-trace + rotation-rate ratio <= 2
+    % for t > 1 s (grace window, default RotGraceT). rotvelout is the
+    % plant's Euler-angle rates [thetadot phidot psidot]
+    % (system_dynamics.m xdot(7:9)) -- the signal the termination charts norm;
+    % Data shape differs per model ([3x1xT] vs [Tx3]), hence squeeze+transpose.
     v0_norm = norm(xi(1:3));
     rot_lqr = squeeze(lqr_trial.rotvelout.Data);
     if size(rot_lqr, 2) ~= 3, rot_lqr = rot_lqr.'; end
@@ -361,16 +350,12 @@ ballistic_envelope_smc = test_points(envelope_smc_mask);
 ballistic_envelope_dsmc_nosat = test_points(envelope_dsmc_nosat_mask);
 ballistic_envelope_dsmc_sat   = test_points(envelope_dsmc_sat_mask);
 
-%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Plot setup
 close all;
 set_default_fonts();
 
 set(0,'DefaultFigureVisible','on')
 set(gcf,'visible','on')
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Positional Plots
 
 
@@ -589,7 +574,8 @@ uncertain_cmd = cat(3, x0_step, uncertain_cmd);
 f8_cmd = cat(3, [0;0;0], f8_cmd);
 spiral_cmd = cat(3, [0;0;0], spiral_cmd);
 
-offsets = [0 1 -1 2 3 4 -2 3 5 -4;
+% Formation X-offsets in model (posout) drone order; only col 1 (leader) is plotted below
+offsets = [0 1 2 3 4 5 -1 -2 -4 -3;
            0 0 0 0 0 0 0 0 0 0;
            0 0 0 0 0 0 0 0 0 0];
 
@@ -662,7 +648,7 @@ ballistic_time = 0:0.1:100;
 f8_time = 0:0.1:150;
 spiral_time = 0:0.1:250;
 
-% Step ====================================================================
+% Step
 interp_step_lqr_pos = interp1(step_out_lqr.posout.Time, permute(step_out_lqr.posout.Data, [3 1 2]), step_time);
 interp_step_smc_pos = interp1(step_out_smc.posout.Time, permute(step_out_smc.posout.Data, [3 1 2]), step_time);
 interp_step_discrete_smc_pos = interp1(step_out_discrete_smc.posout.Time, permute(step_out_discrete_smc.posout.Data, [3 1 2]), step_time);
@@ -749,7 +735,7 @@ for i=1:10
     step_pid_avg_distances = [step_pid_avg_distances; avg_distance];
 end
 
-% Ballistic ===============================================================
+% Ballistic
 interp_step_lqr_ballistic_pos = interp1(step_out_lqr_ballistic.posout.Time, permute(step_out_lqr_ballistic.posout.Data, [3 1 2]), ballistic_time);
 interp_step_smc_ballistic_pos = interp1(step_out_smc_ballistic.posout.Time, permute(step_out_smc_ballistic.posout.Data, [3 1 2]), ballistic_time);
 interp_step_discrete_smc_ballistic_pos = interp1(step_out_discrete_smc_ballistic.posout.Time, permute(step_out_discrete_smc_ballistic.posout.Data, [3 1 2]), ballistic_time);
@@ -836,7 +822,7 @@ for i=1:1
     step_pid_ballistic_avg_distances = [step_pid_ballistic_avg_distances; avg_distance];
 end
 
-% Uncertainty =============================================================
+% Uncertainty
 interp_step_lqr_uncertainty_pos = interp1(step_out_lqr_uncertainty.posout.Time, permute(step_out_lqr_uncertainty.posout.Data, [3 1 2]), step_time);
 interp_step_smc_uncertainty_pos = interp1(step_out_smc_uncertainty.posout.Time, permute(step_out_smc_uncertainty.posout.Data, [3 1 2]), step_time);
 interp_step_discrete_smc_uncertainty_pos = interp1(step_out_discrete_smc_uncertainty.posout.Time, permute(step_out_discrete_smc_uncertainty.posout.Data, [3 1 2]), step_time);
@@ -1475,16 +1461,17 @@ ylabel("Drone index (1 is leader)")
 export_figure("figs/18_spiral_pid_distances")
 
 %% Delta-Distance Heatmaps
+% Nominal formation, model (posout) drone order [0 1 2 3 4 5 -1 -2 -4 -3]; row order MUST match posout
 initial_positions = [0 0 0;
                      1 0 0;
-                     -1 0 0;
                      2 0 0;
                      3 0 0;
                      4 0 0;
-                     -2 0 0;
-                     -3 0 0;
                      5 0 0;
-                     -4 0 0];
+                     -1 0 0;
+                     -2 0 0;
+                     -4 0 0;
+                     -3 0 0];
 ideal_distances = zeros(10,10);
 for i=1:10
     for j=1:10
@@ -2273,7 +2260,7 @@ norm(interp_step_discrete_smc_uncertainty_pos - interp_step_discrete_smc_pos, 'f
 norm(interp_step_pid_uncertainty_pos - interp_step_pid_pos, 'fro')
 
 %% Settling time
-% Step analysis
+% Step: settled at first t where worst-drone deviation from xf <= 5% of its step |xf - xi|
 xi_lqr = interp_step_lqr_pos(1,:,:);
 xi_smc = interp_step_smc_pos(1,:,:);
 xi_discrete_smc = interp_step_discrete_smc_pos(1,:,:);
@@ -2450,7 +2437,7 @@ h3.CellLabelFormat = '%.1f %%';
 clim([-50 50])
 export_figure("figs/38_settling_time_scores")
 
-%%
+%% Ballistic envelope (fig 39)
 figure
 ax(1) = subplot(2,3,1)
 axis equal
@@ -2462,7 +2449,6 @@ for i=1:size(test_points,2)
     idx = test_points(i);
 
     deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
     x0 = deploy_point(10:12);
     
     if ismember(idx, ballistic_envelope_lqr)
@@ -2486,7 +2472,6 @@ for i=1:size(test_points,2)
     idx = test_points(i);
 
     deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
     x0 = deploy_point(10:12);
     
     if ismember(idx, ballistic_envelope_pid)
@@ -2510,7 +2495,6 @@ for i=1:size(test_points,2)
     idx = test_points(i);
 
     deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
     x0 = deploy_point(10:12);
     
     if ismember(idx, ballistic_envelope_smc)
@@ -2534,7 +2518,6 @@ for i=1:size(test_points,2)
     idx = test_points(i);
 
     deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
     x0 = deploy_point(10:12);
 
     if ismember(idx, ballistic_envelope_dsmc_nosat)
@@ -2558,7 +2541,6 @@ for i=1:size(test_points,2)
     idx = test_points(i);
 
     deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
     x0 = deploy_point(10:12);
 
     if ismember(idx, ballistic_envelope_dsmc_sat)
@@ -2589,5 +2571,5 @@ sgtitle("Ballistic trajectory stabilization envelopes", 'FontSize', 20, 'FontWei
 
 export_figure("figs/39_ballistic_envelope", Width=3000, Height=1200)
 
-%%
+%% Cache workspace (load to skip re-simulating)
 save("logs/analysis_log.mat")

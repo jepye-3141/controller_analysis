@@ -1,7 +1,9 @@
 % Reload centroid_lookup workspace and re-render LUT_01 with current style.
-% Used after style-helper updates without re-running the 5-hour LHS sweep.
+% Used after style-helper updates without re-running the LHS sweep.
+% Source log is the 2026-07-10 j3_lut_regen output (N=41, current criterion
+% + fixed ballistics; row 41 is the injected reference operating point).
 clear; clc; close all;
-load('logs/centroid_lookup_log.mat');   % lookup, ranges, N
+load('logs/centroid_lookup_log.mat');   % lookup, ranges, X, N, field_names
 
 set_default_fonts();
 

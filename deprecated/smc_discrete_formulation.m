@@ -1,4 +1,4 @@
-%% Discretization test
+%% Discretization test - standalone dSMC prototype (nonlinear plant + discrete control loop)
 clc
 
 function state_dot = temporary_dynamics(t, state, u, params)
@@ -85,14 +85,9 @@ function uk = SMC_discrete(xkp1, xkp1_d, xk, xk_d, ukm1, params)
     Omegas = sqrt(Omegas);
     Omegar = real(Omegas(1) - Omegas(2) + Omegas(3) - Omegas(4));
 
-    % x form:
-    % x
-    % y
-    % z
-    % phi
-    % theta
-    % psi
+    % x layout: [x y z phi theta psi]
 
+    % Two-step discretization of the plant, from which the control law is derived (see Scratch below):
     % xkp2(1)  = 2*xkp1(1) - xkp(1) + (dt^2)*(cos(xk(4))*sin(xk(5))*cos(x(6)) + sin(x(4))*sin(x(6)))*uk(1)/m - dt*K1(xkp1(1) - xk(1))/m;
     % xkp2(2)  = 2*xkp1(2) - xkp(2) + (dt^2)*(cos(xk(4))*sin(xk(5))*sin(x(6)) - sin(x(4))*cos(x(6)))*uk(1)/m - dt*K2(xkp1(2) - xk(2))/m;
     % xkp2(3)  = 2*xkp1(3) - xkp(3) + (dt^2)*(cos(xk(4))*cos(xk(5))*uk(1)/m - g) - dt*K3*(xkp1(3) - xk(3))/m;
@@ -135,7 +130,7 @@ function uk = SMC_discrete(xkp1, xkp1_d, xk, xk_d, ukm1, params)
     uk = [u1_k; u2_k; u3_k; u4_k];
 end
 
-xk = zeros(12,1); % x y z roll pitch yaw
+xk = zeros(12,1); % [x y z roll pitch yaw], then their rates
 xkp1 = zeros(12,1);
 xd = [2; 1; -5; 0; 0; pi/6.218];
 xkp1_d = xd;
@@ -186,7 +181,7 @@ for i = 1:4000
     ukm1 = uk;
 end
 
-% Scratch
+% Scratch: symbolic derivation - solve the discrete reaching law for uk(1)
 % xkp2 = sym("xkp2", 6);
 % xkp1 = sym("xkp1", 6);
 % xk = sym("xk", 6);

@@ -1,11 +1,7 @@
 function plot_saturation_comparison(out_on, out_off)
-% plot_saturation_comparison  Side-by-side summary of saturation ON vs OFF
-% sweep results.
-%
-% out_on, out_off : structs returned by sweep_landing_centroid for the
-%                   saturation-ON and saturation-OFF runs respectively.
-%
-% Writes figs/SAT_CMP_summary.{png,eps}.
+% plot_saturation_comparison  2x2 summary of saturation ON vs OFF sweep results.
+% out_on, out_off: output structs from sweep_landing_centroid, passed directly
+% (not the saved .mat logs). Writes figs/SAT_CMP_summary.{png,eps}.
 
 set_default_fonts();
 
@@ -65,7 +61,7 @@ title("Landing centroids vs planned impact")
 legend('Location', 'best')
 fontsize(gca, 14, 'points')
 
-%% Tile (2,1): stats panel — sat ON
+%% Tile (2,1): stats panel, sat ON
 nexttile
 axis off
 text(0.02, 0.95, "Saturation ON", ...
@@ -75,7 +71,7 @@ text(0.02, 0.55, stats_block(out_on), ...
     'FontName', 'Times', 'FontSize', 14, 'VerticalAlignment', 'top', ...
     'Interpreter', 'none');
 
-%% Tile (2,2): stats panel — sat OFF
+%% Tile (2,2): stats panel, sat OFF
 nexttile
 axis off
 text(0.02, 0.95, "Saturation OFF", ...

@@ -1,25 +1,8 @@
 function set_default_fonts()
-% set_default_fonts  AIAA-style plotting defaults for MATLAB figures.
-%
-% Sets the project-wide rendering defaults. Call at the top of every
-% figure-producing script. Individual figures may still override these
-% via fontsize(gcf, N), set(h, 'LineWidth', ...), etc.
-%
-% Rationale: AIAA conference papers (e.g. SciTech) are two-column letter
-% format; single-column figures render at ~3.25 in (full-width ~6.5 in).
-% Figures are exported at ~2000x1400 px / 300 DPI (~6.67 in wide) and
-% then shrunk to column width, so the effective scale factor is ~0.5x.
-% To keep printed text at or above the AIAA 8 pt caption minimum, the
-% on-screen font size needs to be ~16 pt and line widths ~1.25 pt.
-%
-% Defaults applied (override per-figure as needed):
-%   axes/text font     Times, 16 pt
-%   title font         18 pt (via title multiplier)
-%   legend/colorbar    14 pt
-%   line width         1.25 pt (data lines)
-%   marker size        8 pt
-%   axes line width    1.0 pt
-%   box on, grid alpha 0.25
+% set_default_fonts  AIAA-style groot plotting defaults (Times throughout).
+% Call at the top of every figure-producing script; per-figure overrides still apply.
+% Sizing: exports (~2000x1400 px / 300 DPI, ~6.67 in wide) shrink ~0.5x into a
+% 3.25 in AIAA column, so 16 pt on-screen keeps print at or above the 8 pt minimum.
 
 font_pt   = 16;
 title_mul = 18 / font_pt;
