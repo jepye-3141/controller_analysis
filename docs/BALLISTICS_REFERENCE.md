@@ -2,22 +2,22 @@
 
 ## Overview
 
-6-DOF (six degree-of-freedom) ballistic flight simulation for a 120mm mortar round. Based on McCoy, "Modern Exterior Ballistics," 2nd ed., Ch. 9. Propagates a rigid body projectile through the atmosphere using modified point-mass equations with full aerodynamic coefficient lookups.
+6-DOF (six degree-of-freedom) ballistic flight simulation for a 120mm mortar round. Based on McCoy, "Modern Exterior Ballistics," 2nd ed., Ch. 9. Propagates a rigid body projectile through the atmosphere using the full 6-DOF vector equations of motion (McCoy sec 9.2 -- not the reduced modified-point-mass model of sec 9.7) with full aerodynamic coefficient lookups.
 
 ## Entry Point: `Mortar_Sim.m`
 
-Sets initial firing conditions and calls `eom2()`. Default test case:
+Sources the operational launch from `operational_launch.m` (project root, the single retune-here source) and calls `eom2()`. Operational launch:
 
 | Parameter | Value | Unit |
 |-----------|-------|------|
-| Muzzle velocity (Vo) | 100 | m/s |
-| Elevation angle | 45 | deg |
-| Azimuth angle | 15 | deg |
+| Muzzle velocity (Vo) | 94 | m/s |
+| Elevation angle | 64 | deg |
+| Azimuth angle (off vertical firing plane) | 15 | deg |
 | Pitch rate (w_z0) | 1 | rad/s |
 | Yaw rate (w_y0) | 0.5 | rad/s |
-| Exit pitch AOA (alpha_0) | 2 | deg |
-| Exit yaw AOA (beta_0) | -0.5 | deg |
-| Initial spin (p) | 0 | rad/s |
+| Exit pitch AOA offset (alpha_0) | 2 | deg |
+| Exit yaw AOA offset (beta_0) | -0.5 | deg |
+| Initial axial spin (p) | -8.379 | rad/s |
 | Max sim time | 300 | s |
 
 ## Core Propagator: `eom2.m`
@@ -92,12 +92,12 @@ Loads projectile parameters and 13 aerodynamic coefficient tables:
 | CMq_CMa_0 | A67:B72 | Pitch damping + moment rate |
 | CMq_CMa_2 | A76:B83 | Yaw-dependent damping increment |
 | C_N_pa | A87:C109 | Magnus force (3-col: Mach, alpha^2, coeff) |
-| C_N | A113:B114 | Normal force derivative |
+| C_N | A113:B114 | Pitch-damping force coeff (C_Nq + C_Nalphadot); neglected (all zero) -- NOT the normal-force slope |
 | C_l_p | A118:B125 | Spin damping moment |
 | C_l_delta | A129:B130 | Fin cant spin torque |
 | C_M_pa | A134:C180 | Magnus moment (3-col) |
 
-Data source: McCoy, 1998, p. 220.
+Data source: McCoy, "Modern Exterior Ballistics," 2nd ed. (1999), p. 220.
 
 ## Coordinate System
 
@@ -112,8 +112,8 @@ Output is rotated to North-West-Up (NWU) via block-diagonal rotation matrix.
 
 In `analysis.m`, the ballistic simulation provides realistic initial conditions:
 1. Full ballistic trajectory is computed
-2. State at apogee is extracted (position, velocity, orientation)
-3. Velocity/angular rates are transformed from earth to body frame via Euler rotation
-4. Initial conditions are scaled (divided by 3) and fed to single-drone controllers
+2. State at apogee (and, for the envelope, every 10th trajectory sample) is extracted
+3. The deploy seed is built by `ballistic_deploy_state.m`: attitude from the pointing vector (body x-axis along r, phi = 0), world->body velocity, and pseudovector-corrected body rates (rotvel0 = -(M'*h))
+4. The 12-state seed is fed to the single-drone controllers (no scaling; the historical "divide by 3" step no longer exists)
 5. Controllers attempt stabilization from this high-energy state
 6. Envelope testing iterates along the trajectory to find the operational deployment window

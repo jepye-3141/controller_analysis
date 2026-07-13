@@ -2,14 +2,21 @@
 %
 % Regenerates logs/centroid_lookup_log.mat on the current eom2 (post the
 % 2026-07-10 ballistic bugsweep: lift/Magnus/Coriolis + deploy-seed sign) and
-% the current ballistic_success criterion, replacing the pre-criterion
-% 2026-05-09 log (which is archived into logs/archive/ first, by copy --
-% nothing is destroyed).
+% the current ballistic_success criterion. The final save OVERWRITES the
+% canonical log in place on every completed run. The archive block below
+% copies ONLY the May-2026 pre-criterion logs to fixed names (idempotent; a
+% no-op now that those archives exist) -- it does NOT archive later canonical
+% logs. Before re-launching a fresh regeneration, manually copy the current
+% canonical log to a date-stamped name under logs/archive/ (convention:
+% centroid_lookup_log_pre_<reason>_<date>.mat).
 %
-% Decisions locked 2026-07-10 (see docs/plan_J3_runbook.md):
+% Decisions locked 2026-07-10 (see docs/plan_J3_runbook.md), amended 2026-07-11
+% for the operating-launch retune:
 %   N_LHS = 40, rng(0); ranges.p widened [-2 2] -> [-12 12] so the box brackets
-%   the operating spin p = -8.379; other ranges unchanged from
-%   centroid_lookup_table.m. The operating point is appended as sample
+%   the operating spin p = -8.379, and ranges.el widened [35 55] -> [35 70] so
+%   it covers the retuned operating elevation el = 64 (post-bugsweep, the steep
+%   64 deg launch gives the gentle ~45 m/s deploy the controller can arrest).
+%   The operating point (now Vo = 94, el = 64) is appended as sample
 %   N_LHS+1, SIMULATED under the current physics (flagged is_reference=true).
 %   (It was formerly injected from the 2026-07-08 sat_on log, but that log is
 %   pre-bugsweep -- the injection was invalid post-fix; bugsweep finding 5.)
@@ -22,8 +29,11 @@
 % Run from the project root, desktop (`j3_lut_regen`) or headless
 % (`matlab -batch "j3_lut_regen"` -- close any other MATLAB first; the sweep's
 % pgrep guard refuses to run alongside a second MATLAB_maca64 process).
-% Wall: ~6-8 min/sample warm, ~15 min for the first (rapid-accel build),
-% => roughly 4.5-5.5 h for N_LHS = 40. Re-launch the same command to resume.
+% Wall (measured): ~1-1.5 min/sample warm (visualize=false; 2026-07-11 run:
+% 0.77 h total for all 41 samples, median 1.0 min, max 2.6 min). If the
+% rapid-accelerator target rebuilds, the first ~6 samples cost 14-20 min each
+% (2026-07-10 run: 2.3 h total). Budget ~0.8-2.3 h. Re-launch the same
+% command to resume.
 
 clearvars; clc
 assert(isfile("constants.m") && isfolder("Ballistics_Simulation-master"), ...
@@ -40,10 +50,10 @@ N_LHS  = 40;
 % ballistic_deploy_state, or the criterion parameters change, so a checkpoint
 % written under old physics cannot be silently resumed into a mixed-model log
 % (bugsweep 2026-07-10 finding 5).
-config_tag = "2026-07-10c_post_ballistic_bugsweep";
+config_tag = "2026-07-11_retune_Vo94_el64_elbox35-70";
 ranges = struct( ...
     'Vo',   [ 80, 120], ...
-    'el',   [ 35,  55], ...
+    'el',   [ 35,  70], ...          % widened 2026-07-11 from [35,55]: covers retuned operating el = 64
     'az',   [  0,  30], ...
     'w_z0', [ -1,   2], ...
     'w_y0', [ -1,   1], ...
@@ -105,23 +115,17 @@ end
 
 %% Sample N_LHS+1: reference operating point, SIMULATED under the current
 %  physics/criterion (not injected from the pre-bugsweep 2026-07-08 log --
-%  see finding 5 note in the header). Costs one extra sweep (~6 min).
+%  see finding 5 note in the header). Costs one extra sweep (~1-3 min warm).
 i_ref = N_LHS + 1;
 if ~done(i_ref)
-    ref_params = struct( ...
-        'Vo', 100, 'el', 45, 'az', 15, 'w_z0', 1, 'w_y0', 0.5, 'p', -8.379, ...
-        'alpha_0', 2, 'beta_0', -0.5, 'x_0', 0, 'y_0', 0, 'z_0', 0, ...
-        't_max', 300, 'saturation_on', true);
+    % Single source of the operational launch (field order differs from the
+    % LHS params structs -- inert, consumers read by name).
+    ref_params = operational_launch();
+    ref_params.saturation_on = true;
     t0  = tic;
     out = sweep_landing_centroid(ref_params, false);
     wall_s(i_ref) = toc(t0);
-    lookup(i_ref).params             = ref_params;
-    lookup(i_ref).p_centroid         = out.p_centroid;
-    lookup(i_ref).reachability_pct   = out.reachability_pct;
-    lookup(i_ref).half_radius        = out.radial_profile.half_radius;
-    lookup(i_ref).radial_profile     = out.radial_profile;
-    lookup(i_ref).ballistic_solution = out.ballistic_solution;
-    lookup(i_ref).is_reference       = true;
+    lookup(i_ref) = record_sample(template, ref_params, out, true);
     done(i_ref) = true;
     save_ckpt(ckpt_path, X, ranges, N_LHS, field_names, lookup, done, wall_s, config_tag);
     fprintf("reference (operating point) simulated: reach=%.3f cx=%.1f cy=%.1f (%.1f min)\n", ...
@@ -129,7 +133,8 @@ if ~done(i_ref)
         lookup(i_ref).p_centroid(2), wall_s(i_ref)/60);
 end
 
-%% LHS samples (each ~6-8 min warm; checkpoint written after every sample)
+%% LHS samples (each ~1-1.5 min warm, 14-20 min during rapid-accel rebuild;
+%  checkpoint written after every sample)
 for n = 1:N_LHS
     if done(n), continue; end
     params = struct('alpha_0', 2, 'beta_0', -0.5, ...
@@ -141,13 +146,7 @@ for n = 1:N_LHS
     t0  = tic;
     out = sweep_landing_centroid(params, false);
     wall_s(n) = toc(t0);
-    lookup(n).params             = params;
-    lookup(n).p_centroid         = out.p_centroid;
-    lookup(n).reachability_pct   = out.reachability_pct;
-    lookup(n).half_radius        = out.radial_profile.half_radius;
-    lookup(n).radial_profile     = out.radial_profile;
-    lookup(n).ballistic_solution = out.ballistic_solution;
-    lookup(n).is_reference       = false;
+    lookup(n) = record_sample(template, params, out, false);
     done(n) = true;
     save_ckpt(ckpt_path, X, ranges, N_LHS, field_names, lookup, done, wall_s, config_tag);
     fprintf("LHS %d/%d: cx=%.1f cy=%.1f reach=%.2f half_r=%.1f errored=%d  (%.1f min; %d/%d done)\n", ...
@@ -164,6 +163,19 @@ fprintf("wrote %s: N=%d entries (%d LHS + 1 reference), total sim wall %.1f h\n"
 fprintf("checkpoint retained at %s -- delete only after verifying the canonical log\n", ckpt_path);
 
 %% ---- local functions ----
+function row = record_sample(template, params, out, is_ref)
+    % One lookup row from a sweep result; starting from the template
+    % guarantees the field set/order matches every other row by construction.
+    row = template;
+    row.params             = params;
+    row.p_centroid         = out.p_centroid;
+    row.reachability_pct   = out.reachability_pct;
+    row.half_radius        = out.radial_profile.half_radius;
+    row.radial_profile     = out.radial_profile;
+    row.ballistic_solution = out.ballistic_solution;
+    row.is_reference       = is_ref;
+end
+
 function save_ckpt(path, X, ranges, N_LHS, field_names, lookup, done, wall_s, config_tag)
     % Atomic-ish checkpoint: write to a temp name, then move over the target.
     tmp = replace(path, ".mat", "_tmp.mat");

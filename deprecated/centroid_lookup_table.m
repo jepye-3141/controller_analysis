@@ -1,6 +1,14 @@
 % LHS lookup table over the 6-D launch space (Vo, el, az, w_z0, w_y0, p):
 % one sweep_landing_centroid(_, false) per sample; N=20, rng(0), ~5 h total.
-% Writes logs/centroid_lookup_log.mat (lookup, ranges, X, N, field_names) + figs/LUT_01.
+% Writes logs/centroid_lookup_log.mat (lookup, ranges, X, N, field_names);
+% render figs/LUT_01 afterwards via replot_LUT_01.m.
+%
+% SUPERSEDED by j3_lut_regen.m (executed 2026-07-10; retuned 2026-07-11):
+% this driver keeps the pre-J3 config (p [-2,2] and el [35,55] exclude the
+% operating point p=-8.379, el=64; N=20; no radial_profile/is_reference
+% fields, which j3_surrogate_refit.m asserts on; no checkpointing) and
+% running it overwrites the canonical N=41 logs/centroid_lookup_log.mat
+% with no archive step. Kept for reference only -- do NOT run.
 close all; clear all; clc
 Simulink.sdi.clear()
 set_param(0, 'CacheFolder', '');
@@ -47,47 +55,5 @@ for n = 1:N
 end
 save("logs/centroid_lookup_log.mat", "lookup", "ranges", "X", "N", "field_names")
 
-%% 3D overlay: every sampled mortar trajectory + its landing centroid
-set_default_fonts();
-
-cmap_ryg = ryg_cmap(32);
-reach = [lookup.reachability_pct];
-
-figure
-axis equal
-grid on
-hold on
-
-h_traj = gobjects(0);
-for n = 1:N
-    tr = lookup(n).ballistic_solution.trajectory;
-    c_idx = max(1, min(size(cmap_ryg,1), round(reach(n) * size(cmap_ryg,1))));
-    c     = cmap_ryg(c_idx, :);
-    h = plot3(tr(:,10), tr(:,11), tr(:,12), '-', ...
-              'Color', [c 0.4], 'LineWidth', 1.2);
-    if isempty(h_traj)
-        h_traj = h;
-    end
-end
-
-h_cent = gobjects(0);
-for n = 1:N
-    pc = lookup(n).p_centroid;
-    h = plot3(pc(1), pc(2), pc(3), 'p', 'MarkerSize', 18, ...
-              'MarkerFaceColor', 'm', 'MarkerEdgeColor', 'k', 'LineWidth', 1.0);
-    if isempty(h_cent)
-        h_cent = h;
-    end
-end
-
-view(3)
-colormap(gca, cmap_ryg)
-clim([0 1])
-cb = colorbar;
-cb.Label.String = "Reachability (fraction of trials stable)";
-xlabel("x (m)")
-ylabel("y (m)")
-zlabel("z (m)")
-title(sprintf("Landing centroids over LHS sample of N=%d trajectories", N))
-legend([h_traj h_cent], ["Mortar trajectory", "Landing centroid"], 'Location', 'best')
-export_figure("figs/LUT_01_trajectories_and_centroids")
+%% Figure: render via replot_LUT_01.m (single canonical LUT_01 renderer;
+%  matches the j3_lut_regen.m convention)

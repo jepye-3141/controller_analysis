@@ -26,7 +26,9 @@ function ballistic_sol = mortar_propagate(launch, env, output)
     
     % ODE state x (12 states), inertial frame (x = range/north, y = altitude/up, z = cross-range/east):
     %  x(1:3)   = velocity (m/s)
-    %  x(4:6)   = angular rate vector h (rad/s); spin rate p = (I_y/I_x)*(h.r)
+    %  x(4:6)   = h = H/I_y, angular momentum over transverse MOI (rad/s):
+    %             transverse part = transverse body rate; axial part =
+    %             (I_x/I_y)*p -- recover spin as p = (I_y/I_x)*(h.r)
     %  x(7:9)   = projectile pointing unit vector
     %  x(10:12) = CG position (m): range, altitude, cross-range
     % Output .trajectory keeps 15 columns: 13:15 are backfilled post-hoc
@@ -84,8 +86,9 @@ function ballistic_sol = mortar_propagate(launch, env, output)
 
     % Velocity direction-cosine angles (deg): alpha = angle of the velocity
     % vector from the UP axis, beta = from the EAST axis. These are NOT
-    % angle of attack / sideslip -- the pointing vector never enters (at the
-    % canonical launch .alpha starts at ~47 deg while the true AoA is ~2 deg).
+    % angle of attack / sideslip -- the pointing vector never enters (e.g.
+    % .alpha starts at ~30 deg at the operational el=64/az=15 launch, ~47 deg
+    % at the historical el=45 launch, while the true AoA is ~2 deg either way).
     % Field names kept for schema stability; use .total_aoa below for AoA.
     alpha = acosd(x(:,2)./((x(:,1).^2+x(:,2).^2+x(:,3).^2).^0.5));
     beta = acosd(x(:,3)./((x(:,1).^2+x(:,2).^2+x(:,3).^2).^0.5));
@@ -100,41 +103,18 @@ function ballistic_sol = mortar_propagate(launch, env, output)
     
     % Find the apogee of the munition's flight.
     [max_ht,I] = max(x(:,11));
-    ap_vel = x(I, 1:3);
-    ap_vel(2) = 0;
-    ap_view = cross(ap_vel, [0 1 0]) / norm(cross(ap_vel, [0 1 0]));
-    ap_view = [ap_view(1) -ap_view(3) ap_view(2)]; % corr. to idx 10 12 11
-    ap_view_min = -1*[ap_vel(1) -ap_vel(3) ap_vel(2)];
-    
-    % Interpolate post-apogee time, position (range/cross-range), the two
-    %  velocity direction-cosine angles (alpha from up, beta from east --
-    %  see above), and velocity at altitude = 0.
+
+    % Interpolate post-apogee time, position (range/cross-range), and
+    %  velocity at altitude = 0. impacts(1:3) feed the exported impact
+    %  fields; impacts(4:6) feed the output-only diagnostics below.
     impact_inputs = [t(I:end), ...
                      x(I:end,10), x(I:end,12), ...
-                     alpha(I:end), beta(I:end), ...
                      x(I:end,1), x(I:end,2), x(I:end,3)];
     impacts = interp1(x(I:end,11), impact_inputs, 0);
     impact_time  = impacts(1);
     range        = impacts(2);
     cross_range  = impacts(3);
-    % impacts(4:5) = alpha/beta angles, unused since the impact_angle rewrite
-    vel_x_imp    = impacts(6);
-    vel_y_imp    = impacts(7);
-    vel_z_imp    = impacts(8);
 
-    % Descent angle below horizontal at impact, from the interpolated impact
-    % velocity. (2026-07-10 fix: the old reconstruction treated the two
-    % direction-cosine angles as spherical coordinates and under-reported
-    % the descent angle by ~6 deg whenever crossrange velocity was nonzero.)
-    impact_angle = atand(-vel_y_imp / hypot(vel_x_imp, vel_z_imp));
-
-    impact_vel = sqrt(vel_x_imp^2 + vel_y_imp^2 + vel_z_imp^2);
-    
-    % Calculate total distance travelled at each timestep
-    total_dis = sqrt(x(:,10).^2 + x(:,12).^2);
-    
-    % Distance at impact, interpolated to altitude 0 (avoids negative-alt overshoot)
-    total_dis_imact = interp1(x(I:end,11), total_dis(I:end),0);
     ballistic_sol.time = t;
     % Output .trajectory is NUE->NWU rotated; raw solver state x stays NUE
     NUEtoNWU = [1 0 0;
@@ -154,7 +134,35 @@ function ballistic_sol = mortar_propagate(launch, env, output)
     ballistic_sol.trajectory = [traj12, theta_b, zeros(size(traj12, 1), 1), psi_b];
         
     if output
-        disp(['Total distance traveled = ',num2str(total_dis_imact),' meters'])
+        % Output-only diagnostics (plot views, impact readouts): computed
+        % here so headless callers (sweeps, LUT, analysis.m) skip them.
+        ap_vel = x(I, 1:3);
+        ap_vel(2) = 0;
+        ap_view = cross(ap_vel, [0 1 0]) / norm(cross(ap_vel, [0 1 0]));
+        ap_view = [ap_view(1) -ap_view(3) ap_view(2)]; % corr. to idx 10 12 11
+        ap_view_min = -1*[ap_vel(1) -ap_vel(3) ap_vel(2)];
+
+        vel_x_imp = impacts(4);
+        vel_y_imp = impacts(5);
+        vel_z_imp = impacts(6);
+
+        % Descent angle below horizontal at impact, from the interpolated impact
+        % velocity. (2026-07-10 fix: the old reconstruction treated the two
+        % direction-cosine angles as spherical coordinates and under-reported
+        % the descent angle by ~6 deg whenever crossrange velocity was nonzero.)
+        impact_angle = atand(-vel_y_imp / hypot(vel_x_imp, vel_z_imp));
+
+        impact_vel = sqrt(vel_x_imp^2 + vel_y_imp^2 + vel_z_imp^2);
+
+        % Horizontal ground distance from the origin at each timestep
+        % (straight-line, not path length)
+        total_dis = sqrt(x(:,10).^2 + x(:,12).^2);
+
+        % Ground distance at impact, interpolated to altitude 0 (avoids
+        % negative-alt overshoot)
+        total_dis_imact = interp1(x(I:end,11), total_dis(I:end),0);
+
+        disp(['Horizontal ground distance at impact = ',num2str(total_dis_imact),' meters'])
         disp(['Impact angle = ',num2str(impact_angle),' degrees'])
         disp(['Impact velocity = ',num2str(impact_vel),' m/s'])
         disp(['Range along x-axis at impact = ',num2str(range),' m'])
@@ -198,6 +206,10 @@ function ballistic_sol = mortar_propagate(launch, env, output)
     ballistic_sol.apogee = max_ht;
     ballistic_sol.apogee_idx = I;
     ballistic_sol.impact_time = impact_time;
+    % NOTE: impact_range/impact_crossrange are RAW NUE -- crossrange is
+    % east-positive, the OPPOSITE sign to .trajectory (NWU; col 11 is
+    % west-positive). No live consumer reads these scalars (every consumer
+    % uses .trajectory); reconcile the frame if you ever do. (2026-07-12 audit C12.)
     ballistic_sol.impact_range = range;
     ballistic_sol.impact_crossrange = cross_range;
 end
@@ -235,12 +247,20 @@ function dx = sixdof_ballistics(t, x, env)
     a = interp1(env.std_atm(:,1), env.std_atm(:,8), e(2)/1000);
     mach = v_mag/a;
 
-    if mach > env.lut_C_D_0(size(env.lut_C_D_0,1),1)
-        mach = env.lut_C_D_0(size(env.lut_C_D_0,1),1);
+    if mach > env.mach_max   % clamp to the shortest table's ceiling (audit C8)
+        mach = env.mach_max;
     end
 
     cos_taoa = (v(1)*r(1) + v(2)*r(2) + v(3)*r(3)) / v_mag;
-    alpha = acos(cos_taoa);
+    % Clamp the acos argument to [-1,1]. cos_taoa carries the |r| drift (r is
+    % not renormalized in the RHS, by design), so on a near-nose-on pass (true
+    % AoA ~ 0) it can exceed 1 by ~1 ulp, which sends acos into the complex
+    % plane and silently poisons the state. The clamp is a no-op wherever the
+    % old code was well-defined, so valid solves stay bit-identical; cos_taoa
+    % itself is left raw for the force/moment brackets below, whose (V.r)V
+    % reconstruction is exact with the un-renormalized r. (2026-07-12 audit C1;
+    % the 2026-07-10 bugsweep flagged this line but did not fix it.)
+    alpha = acos(max(-1, min(1, cos_taoa)));
 
     % Aero coefficient lookups
     C_D_0 = interp1(env.lut_C_D_0(:,1),env.lut_C_D_0(:,2),mach);
@@ -350,7 +370,13 @@ function dx = sixdof_ballistics(t, x, env)
     dr(3) = h(1)*r(2) - h(2)*r(1);
 
     de(1) = v(1);
-    de(2) = v(2) + v(1)^2/(2*env.R);
+    % de(2) = v(2): tangent-plane altitude kinematics are exact; earth
+    % curvature is carried by the tilt-gravity g(1..2) above, per McCoy Ch. 9.
+    % (2026-07-12 audit C3: removed an inherited v(1)^2/(2R) term -- an
+    % acceleration summed into a velocity, dimensionally inhomogeneous and not
+    % McCoy's; it perturbed altitude at the ~mm level. Regenerate ballistic
+    % results on this corrected kinematics.)
+    de(2) = v(2);
     de(3) = v(3);
 
     dx = [dv.'; dh.'; dr.'; de.'];

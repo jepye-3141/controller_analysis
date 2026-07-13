@@ -69,7 +69,7 @@ STABILIZE = 4;
 n_deploy   = 8;             % deployment points sampled along 3D mission trajectory
 % Cross-track landing offsets (m); positive = left of travel (CCW).
 ct_offsets = [0, 100, -100, 200, -200];
-ct_names   = ["center", "left100", "right100", "left200", "right200"];
+ct_names   = arrayfun(@ct_short_name, ct_offsets);
 n_ct       = length(ct_offsets);
 neighbor_offsets = [-1, 0, 1, 2];         % target deploy-index offsets
 nb_names         = ["behind1", "inplace", "ahead1", "ahead2"];
@@ -91,8 +91,10 @@ deploy_arc = linspace(0.20 * arc_3d(end), 0.80 * arc_3d(end), n_deploy);
 
 deploy_pct_vec = linspace(20, 80, n_deploy);
 
-% Trajectory columns: 1:3 vel (earth), 4:6 ang rates (earth), 7:9 pointing
-% unit vector, 10:12 pos. Deploy attitude derives from the pointing vector
+% Trajectory columns (NWU world): 1:3 vel, 4:6 h = H/I_y (~ body angular
+% rate; the axial component is understated by I_x/I_y -- the accepted
+% approximation, see ballistic_deploy_state.m), 7:9 pointing unit vector,
+% 10:12 pos. Deploy attitude derives from the pointing vector
 % (interpolate r, then call ballistic_deploy_state). Cols 13:15 now carry the
 % same derived attitude, backfilled post-hoc by eom2 -- valid at exact rows,
 % but interpolated stations must still interpolate r, never the angle columns.
@@ -236,6 +238,11 @@ for ptr = 1:length(sim_outputs)
 
     t_trial    = out_sim.posout.Time;
     pos_trial  = squeeze(out_sim.posout.Data).';
+    % velout is logged in NED components (y,z sign-flipped vs posout's NWU) --
+    % an uncompensated root gain in the *_single models. Norm-safe (every
+    % consumer here and in ballistic_success uses ||.||), but the stored
+    % trajectory.vel components below are NED, not NWU. (2026-07-12 audit C6;
+    % the model-side fix -- a compensating [1 -1 -1] gain -- is deferred.)
     vel_trial  = squeeze(out_sim.velout.Data).';
     % rotvelout = plant Euler-angle rates [thetadot phidot psidot], the
     % signal the termination chart norms; logged shape varies ([3x1xT]
@@ -290,7 +297,7 @@ assert(err_frac < 0.05, ...
 %% Aggregations needed for centroid + figures
 stable_arr = reshape([results.stable], n_deploy, n_ct, n_nb);
 tgt_arr    = reshape([results.target_deploy_idx], n_deploy, n_ct, n_nb);
-n_trials   = numel(results);
+n_cells   = numel(results);   % all grid cells incl. ~20 never-run boundary exclusions (cf. the 'Running N trials' count)
 [I_idx, K_idx, NB_idx] = ndgrid(1:n_deploy, 1:n_ct, 1:n_nb);
 I_idx = I_idx(:); K_idx = K_idx(:); NB_idx = NB_idx(:);
 
@@ -382,7 +389,12 @@ radial_profile = struct( ...
 % Normalize over attempted trials only -- boundary cells with target_idx
 % out of [1, n_deploy] never ran and would otherwise dilute the metric.
 attempted_mask  = ~isnan([results.target_deploy_idx]);
-reachability_pct = sum(stable_arr(:)) / nnz(attempted_mask);
+% Exclude parsim-errored trials from the denominator: an infrastructure error
+% (worker crash, missing setVariable after a model edit) is not a controller
+% failure. n_errored counts attempted cells that errored, so subtracting it
+% leaves attempted-and-ran. (2026-07-12 audit C7; today n_errored=0, no change.)
+n_scored = nnz(attempted_mask) - n_errored;
+reachability_pct = sum(stable_arr(:)) / max(n_scored, 1);
 
 out = struct( ...
     'p_centroid',         [cx; cy; cz], ...
@@ -408,7 +420,7 @@ ts = 0:0.1:sim_time;
 figure
 hold on
 grid on
-for r = 1:n_trials
+for r = 1:n_cells
     if ~stable_arr(r)
         continue
     end
@@ -436,7 +448,7 @@ export_figure("figs/TO_01_kinetic_energy" + label_suffix)
 figure
 hold on
 grid on
-for r = 1:n_trials
+for r = 1:n_cells
     if ~stable_arr(r)
         continue
     end
@@ -461,7 +473,7 @@ export_figure("figs/TO_06_control_norm" + label_suffix)
 
 %% Settling time: first XY pass within reach_tol of target
 settle_t_arr = nan(n_deploy, n_ct, n_nb);
-for r = 1:n_trials
+for r = 1:n_cells
     tr  = results(r).trajectory;
     tgt = tgt_arr(r);
     if isempty(tr) || isempty(tr.time) || isnan(tgt)
@@ -479,7 +491,7 @@ figure
 hold on
 grid on
 markers   = {'o', 's', 'd', '^', 'v'};
-ct_labels = ["center", "left +100 m", "right -100 m", "left +200 m", "right -200 m"];
+ct_labels = arrayfun(@ct_legend_label, ct_offsets);
 h_handles = gobjects(1, n_ct);
 for k = 1:n_ct
     valid_k = ~isnan(tgt_arr(:, k, :));
@@ -563,7 +575,7 @@ h_traj = plot3(ballistic_solution.trajectory(:,10), ...
                ballistic_solution.trajectory(:,11), ...
                ballistic_solution.trajectory(:,12), '-b', 'LineWidth', 2);
 h_first = gobjects(0);
-for r = 1:n_trials
+for r = 1:n_cells
     tgt = tgt_arr(r);
     if isnan(tgt)
         continue
@@ -663,7 +675,7 @@ export_figure("figs/TO_07_landing_heatmap" + label_suffix, EPSContentType="image
 %% Unique reachability (Shapley-weighted credit, per-success normalized)
 % reachers{j,k} = list of deploy indices that successfully stabilized at landing point (j,k).
 reachers = cell(n_deploy, n_ct);
-for r = 1:n_trials
+for r = 1:n_cells
     tgt = tgt_arr(r);
     if isnan(tgt) || ~stable_arr(r)
         continue
@@ -673,7 +685,7 @@ end
 
 unique_credit = zeros(n_deploy, 1);
 n_successes   = zeros(n_deploy, 1);
-for r = 1:n_trials
+for r = 1:n_cells
     if ~stable_arr(r)
         continue
     end
@@ -709,4 +721,25 @@ export_figure("figs/TO_05_unique_reachability" + label_suffix)
 
 save("logs/trajectory_optimization_log" + label_suffix + ".mat")
 
+end
+
+% Cross-track offset naming (single source: ct_offsets; positive = left).
+function s = ct_short_name(v)
+if v == 0
+    s = "center";
+elseif v > 0
+    s = "left" + string(v);
+else
+    s = "right" + string(-v);
+end
+end
+
+function s = ct_legend_label(v)
+if v == 0
+    s = "center";
+elseif v > 0
+    s = "left +" + string(v) + " m";
+else
+    s = "right " + string(v) + " m";   % v < 0 carries its own minus sign
+end
 end

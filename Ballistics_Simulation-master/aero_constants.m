@@ -22,10 +22,12 @@ function env = aero_constants(atm_file, projectile_file)
     env.m_dot = 0;          % RoC of projectile mass
     env.r_e = 0;            % Displacement to nozzle exit from CoG
     env.delta_f = 0;        % Fin cant
-    env.T = 0;              % Thrust
-    env.T_s = 0;            % Rocket spin torque
+    env.T = 0;              % Thrust (kgf: eom2 forms gravity*T, a kgf->N
+                            % conversion -- supply kgf, not N, if ever enabled; audit C9)
+    env.T_s = 0;            % Rocket spin torque (kgf*m, same convention)
     
-    % Aerodynamic coefficient tables from McCoy, 1998
+    % Aerodynamic coefficient tables from McCoy, Modern Exterior Ballistics,
+    % 2nd ed., Ch. 9 (120mm mortar; data extracted from p. 220)
     env.lut_C_D_0       = readmatrix(projectile_file,'Range','A5:B11');
     env.lut_C_D_del2    = readmatrix(projectile_file,'Range','A15:B22');
     env.lut_C_L_a0      = readmatrix(projectile_file,'Range','A26:B30');
@@ -35,10 +37,24 @@ function env = aero_constants(atm_file, projectile_file)
     env.lut_CMq_CMa_0   = readmatrix(projectile_file,'Range','A67:B72');
     env.lut_CMq_CMa_2   = readmatrix(projectile_file,'Range','A76:B83');
     env.lut_C_N_pa      = readmatrix(projectile_file,'Range','A87:C109');
+    % lut_C_N is the pitch-damping FORCE coefficient (C_Nq + C_Nalphadot),
+    % consumed by eom2's (h x r) term -- NOT the normal-force slope C_Nalpha.
+    % It is deliberately all-zero (McCoy neglects this force); populating it
+    % with a normal-force value would inject a large spurious force. (audit C2)
     env.lut_C_N         = readmatrix(projectile_file,'Range','A113:B114');
     env.lut_C_l_p       = readmatrix(projectile_file,'Range','A118:B125');
     env.lut_C_l_delta   = readmatrix(projectile_file,'Range','A129:B130');
     env.lut_C_M_pa      = readmatrix(projectile_file,'Range','A134:C180');
+
+    % Highest Mach every 1-D table covers; the RHS clamps mach to this so no
+    % interp1 can fall off the top of the shortest table (-> NaN, poisoning the
+    % state). Today all force/moment tables end at 0.95 (C_l_p reaches 2.5), so
+    % this = 0.95 and changes nothing -- it just stops keying the clamp off
+    % C_D_0 alone, which would NaN the others if C_D_0 were ever extended. (audit C8)
+    env.mach_max = min([env.lut_C_D_0(end,1),    env.lut_C_D_del2(end,1), ...
+        env.lut_C_L_a0(end,1),   env.lut_C_L_a2(end,1),   env.lut_C_M_a0(end,1), ...
+        env.lut_C_M_a2(end,1),   env.lut_CMq_CMa_0(end,1), env.lut_CMq_CMa_2(end,1), ...
+        env.lut_C_N(end,1),      env.lut_C_l_p(end,1),    env.lut_C_l_delta(end,1)]);
 
     % Pre-build scattered interpolants (avoid reconstructing per ODE call).
     % ExtrapolationMethod 'nearest' clamps queries outside the table hull

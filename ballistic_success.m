@@ -19,9 +19,11 @@ function [success, info] = ballistic_success(t, pos, vel, target_xy, v0_norm, ex
 %                    psidot], not body rates -- the same signal the
 %                    termination charts norm. The grace window exempts the
 %                    ballistic-separation arrest transient (deployment
-%                    hands the vehicle over tumbling); empirically sweep
-%                    violations start by t~=0.06 s and none persist past
-%                    3.8 s, so 1 s excludes the transient only.)
+%                    hands the vehicle over tumbling); empirically
+%                    (2026-07-03 sat_on sweep, pre-bugsweep ballistics,
+%                    Vo=100/el=45 launch) sweep violations started by
+%                    t~=0.06 s and none persisted past 3.8 s, so 1 s
+%                    excludes the transient only.)
 %
 % Inputs:
 %   t          Tx1 time vector of the logged series
@@ -38,8 +40,11 @@ function [success, info] = ballistic_success(t, pos, vel, target_xy, v0_norm, ex
 %   RotRefNorm  = norm([pi; pi; pi])  reference rate magnitude (rad/s)
 %   RotGraceT   = 1                   grace window (s): rotation bound is
 %                                     evaluated only for t > RotGraceT
-%   RotVel      = []                  Tx3 rate trace on the same time grid
-%                                     as t, when available
+%   RotVel      = []                  rate trace on the same time grid as t,
+%                                     when available. Pass the raw logged
+%                                     rotvelout.Data: both the 3-D [3x1xT]
+%                                     (lqr/dsmc) and 2-D [Tx3] (pid/smc)
+%                                     shapes are normalized internally
 %
 % Outputs:
 %   success    logical
@@ -77,7 +82,7 @@ info.position_ok = info.final_miss <= opts.ReachTol;
 % (c) velocity ratio over the whole trace
 info.velocity_checked = ~isempty(vel);
 if info.velocity_checked
-    info.max_speed = max(vecnorm(vel(:, 1:3), 2, 2));
+    info.max_speed = max(vecnorm(vel(:, 1:3), 2, 2), [], 'includenan');  % NaN sample must fail, not vanish (audit C4)
     info.max_speed_ratio = info.max_speed / v0_norm;
     info.velocity_ok = info.max_speed_ratio <= opts.VelRatioMax;
 else
@@ -93,12 +98,18 @@ end
 info.rotation_checked = ~isempty(opts.RotVel);
 info.rot_grace_T = opts.RotGraceT;
 if info.rotation_checked
+    % Accept the raw logged rotvelout array: lqr/dsmc log 3-D [3x1xT],
+    % pid/smc 2-D [Tx3]. Orient by raw ndims, NOT a size==3 heuristic
+    % (mis-orients [3x1xT] when T==3 -- bugsweep 2026-07-10 finding 12).
+    if ndims(opts.RotVel) == 3
+        opts.RotVel = squeeze(opts.RotVel).';
+    end
     assert(size(opts.RotVel, 1) == numel(t), ...
         'ballistic_success:rotvel_grid', ...
         'RotVel has %d rows but t has %d samples -- traces must share a grid', ...
         size(opts.RotVel, 1), numel(t));
     rot_norms = vecnorm(opts.RotVel(:, 1:3), 2, 2);
-    info.max_rot = max(rot_norms);
+    info.max_rot = max(rot_norms, [], 'includenan');
     info.max_rot_ratio = info.max_rot / opts.RotRefNorm;
     post = rot_norms(t > opts.RotGraceT);
     if isempty(post)
@@ -106,7 +117,7 @@ if info.rotation_checked
         info.max_rot_post_ratio = NaN;
         info.rotation_ok = true;
     else
-        info.max_rot_post = max(post);
+        info.max_rot_post = max(post, [], 'includenan');  % NaN sample must fail clause (d) (audit C4)
         info.max_rot_post_ratio = info.max_rot_post / opts.RotRefNorm;
         info.rotation_ok = info.max_rot_post_ratio <= opts.RotRatioMax;
     end

@@ -9,8 +9,13 @@ p_target = [600; 0; 0];   % target landing centroid (m)
 lambda   = 50;            % weight on half_radius (m); J = ||c - p_t||^2 - lambda*half_r
 verify   = true;          % run one ground-truth sweep at the surrogate optimum (~16 min)
 
-%% Load LHS training data (output of centroid_lookup_table.m)
-% Saved log is pre-criterion (May 2026), stale vs current ballistic_success numbers.
+%% Load LHS training data (canonical log regenerated 2026-07-11 by j3_lut_regen.m, N=41)
+% WARNING -- do NOT re-run this script as-is. The canonical
+% logs/surrogate_optimize_log.mat is the PROMOTED area_proxy refit
+% (re-promoted 2026-07-11 on the retuned N=41 LUT, plan J3); this script's clamp-mode fit would overwrite it and
+% regress the promotion (it also overwrites figs/SO_01). Use
+% j3_surrogate_refit.m for fitting, replot_SO_01.m to re-render SO_01, or
+% port the area_proxy y_hr block + J here first (plan J3 delta W1.1).
 load("logs/centroid_lookup_log.mat")   % lookup, ranges, N, X, field_names
 
 %% Build training matrix in normalised [0,1]^d coordinates
@@ -131,6 +136,7 @@ title(tl, sprintf('Surrogate J slices, p_{target} = (%g, %g) m, \\lambda = %g', 
 export_figure("figs/SO_01_predicted_J_slices")
 
 %% Save log
+% WARNING: overwrites the promoted area_proxy canonical log -- see header note.
 save("logs/surrogate_optimize_log.mat", ...
      "gp_cx", "gp_cy", "gp_reach", "gp_hr", ...
      "theta_best", "theta_phys", "J_best", ...

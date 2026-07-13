@@ -28,9 +28,6 @@ constants_struct.unconstrained = false;  % true => dsmc_constraints delegates to
 constants_struct_info = Simulink.Bus.createObject(constants_struct);
 constants_struct_bus = evalin("base", constants_struct_info.busName);
 
-% per-rotor thrust command, expressed as delta from hover weight (m*g/4 each)
-Thrust = [1 - g*m/4; 1 - g*m/4; 1 - g*m/4; 1 - g*m/4];
-
 % hover-linearized A, B, C, D (12-state; u1 = thrust delta from hover)
 A = [0 0 0 0 0 0 -g 0 0 0 0 0;
      0 0 0 0 0 0 0 g 0 0 0 0;
@@ -66,15 +63,13 @@ D = zeros(6, 4);
 
 Aa = [A zeros(12, 3); C(1:3, :), zeros(3, 3)];
 Ba = [B; zeros(3, 4)];
-Ca = [C zeros(6, 3)];
-ssmodel = ss(Aa, Ba, Ca, []);
 
 Q = diag([3 3 6000 1080 1080 1080 180 180 180 0.5 0.5 1000 15 15 300]);
 Q = Q / norm([3 3 6000 1080 1080 1080 180 180 180 0.5 0.5 1000 15 15 300]);
 R = 1*eye(4);
 N = zeros(15,4);
 
-[Kd Sd Pd] = lqrd(Aa, Ba, Q, R, N, 1/50);
+Kd = lqrd(Aa, Ba, Q, R, N, 1/50);
 Ki_d = Kd(:, 13:15);
 Kp_d = Kd(:, 1:12);
 
@@ -84,5 +79,3 @@ unco = length(A) - rank(Co)
 
 Ob = obsv(A, C);
 unobsv = length(A) - rank(Ob)
-
-return

@@ -162,7 +162,9 @@ i_ref = find([lookup.is_reference], 1);
 if ~isempty(i_ref)
     % index of the reference row inside the centroid-masked set
     idx_masked = cumsum(ok_centroid);
-    fprintf("\n--- reference operating point (Vo=100, el=45, az=15, p=-8.379) ---\n");
+    rp_ = lookup(i_ref).params;   % print the actual reference launch, not a stale literal
+    fprintf("\n--- reference operating point (Vo=%g, el=%g, az=%g, p=%g) ---\n", ...
+        rp_.Vo, rp_.el, rp_.az, rp_.p);
     if ok_centroid(i_ref)
         fprintf("  LOO pred (cx,cy) = (%.1f, %.1f)  vs actual (%.1f, %.1f)\n", ...
             pred_cx(idx_masked(i_ref)), pred_cy(idx_masked(i_ref)), y_cx(i_ref), y_cy(i_ref));

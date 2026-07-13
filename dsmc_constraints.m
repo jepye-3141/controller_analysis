@@ -89,9 +89,12 @@ d = 2;   % yaw torque coefficient
 % Per-rotor saturation bounds in Omega^2 (rotor-speed-squared) space, sized
 % for this quadrotor (m = 0.8 kg); adjust when real motor specs are known.
 %   Omega2_min = 0.0  : motors can spin to zero (typical ESC convention)
-%   Omega2_max = 2.0  : 4*b*Omega2_max = 40 N total thrust  =>  T/W = 5.10
-% Hover-trim feasibility (Plan A+ C2): 40 > m*g = 7.848 (T/W > 1); hover
-% Omega^2 per rotor = m*g/(4*b) = 0.392, inside [0, 2].
+%   Omega2_max : total thrust = 4*b*Omega2_max  =>  T/W = 4*b*Omega2_max/(m*g).
+%     At the shipped value 2 that is 40 N, T/W = 5.10 -- these worked numbers
+%     assume that value; set_omega2_max.m rewrites only the literal below.
+% Hover-trim feasibility (Plan A+ C2): T/W > 1 requires 4*b*Omega2_max > m*g
+% = 7.848; hover Omega^2 per rotor = m*g/(4*b) = 0.392 must lie inside
+% [Omega2_min, Omega2_max].
 % set_omega2_max.m regexprep-rewrites the Omega2_max literal below on disk --
 % do not reformat that assignment line.
 Omega2_min = 0.0;
@@ -158,8 +161,10 @@ u_Mz = Jzz * ((-apsi * dxk(6) + (K6/Jzz) * dxk(6)) + nupsi * tilde_spsik);
 % requires this evaluation point. Caveat: a_i use the commanded u_T, not the
 % post-saturation u_bar -- under deep thrust saturation, commanded u_T can be
 % far from feasible, making a1, a2, a5, a6 numerically erratic and degrading
-% the slowly-varying-D assumption behind the ISS bound (dsmc_saturation.tex,
-% "Slowly varying D_k" paragraph).
+% the slowly-varying-D assumption behind the ISS bound
+% (docs/scitech-paper/root.tex, frozen-D_k / D_{k+1} ~= D_k discussion in the
+% saturation Schur-stability and steady-state sections; see also
+% docs/saturation_verification_report.md, finding F5).
 a1 =  6 * m / (u_T * cos(xk(6)));
 a2 =  2 * m / (u_T * cos(xk(6)));
 a5 = -6 * m / (u_T * cos(xk(4)) * cos(xk(6)));
@@ -296,8 +301,11 @@ function [Omega2_star, u_bar] = priority_weighted_allocate(u, Omega2_min, Omega2
     end
 
     % STAGE 3: scale roll/pitch jointly (deep saturation, last resort)
-    %   Reached only when even zero thrust + zero yaw cannot satisfy the
-    %   demanded (Mx, My); a measure-zero set of inputs in practice.
+    %   Reached when zeroing yaw and rescaling thrust still cannot fit the
+    %   demanded (Mx, My) in the box: commanded T < 2*max(|Mx|,|My|) or
+    %   max(|Mx|,|My|) > b*Omega2_max. Not measure-zero -- commanded T <= 0
+    %   (e.g. arresting a climb during ballistic recovery) lands here for any
+    %   nonzero roll/pitch demand. See docs/paper_code_agreement_saturation.md F1.
     gamma = max_feasible_scale_local(zeros(4,1), c_Mx + c_My, Omega2_min, Omega2_max);
     Om2 = gamma * (c_Mx + c_My);
     Omega2_star = max(Omega2_min, min(Om2, Omega2_max));

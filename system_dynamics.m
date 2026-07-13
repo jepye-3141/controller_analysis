@@ -5,18 +5,17 @@ function xdot = system_dynamics(A, B, u, x, constants)
 % x = [vx vy vz wx wy wz theta phi psi x y z]; u = [T Mx My Mz] with T the
 % ABSOLUTE thrust (not delta from hover). u is applied as-is: no saturation
 % or clipping anywhere in the plant. A, B unused (Simulink interface).
+    % Only the fields the plant consumes are unpacked. In particular
+    % m_uncertain is NOT read here: the plant flies at nominal mass m;
+    % mass uncertainty flows through the controllers only.
     g = constants.g          ;
-    l = constants.l          ;
     Jmp = constants.Jmp        ;
     Jxx = constants.Jxx        ;
     Jyy = constants.Jyy        ;
     Jzz = constants.Jzz        ;
     kmt = constants.kmt        ;
     kwt = constants.kwt        ;
-    dt = constants.dt         ;
-    K = constants.K          ;
     m = constants.m          ;
-    m_uncertain = constants.m_uncertain;
     u = reshape(u, [4, 1]);
     x = reshape(x, [12, 1]);
     xdot=zeros(12,1);
