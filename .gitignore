@@ -1,6 +1,6 @@
-# Documentation (generated, not tracked)
-docs/
-docs/**
+# Documentation: internal notes/plans are local-only. Only the published
+# AIAA SciTech paper is tracked (whitelisted at the bottom of this file).
+docs/*
 CLAUDE.md
 
 # Ongoing research materials
@@ -26,5 +26,31 @@ design work/
 # MATLAB editor autosaves
 *.asv
 
-# Regenerable vector figures (PNG twins are tracked; EPS kept on disk only for the local paper build)
+# Regenerable vector figures (PNG twins are tracked; EPS kept on disk only
+# for the local paper build)
 *.eps
+
+# --- Published paper (docs/scitech-paper) --------------------------------
+# Whitelist only the buildable source + PDF + the six figures root.tex
+# actually \includegraphics. Placed last so these negations win over
+# docs/* and *.eps above. Everything else in the paper dir stays ignored:
+# LaTeX build artifacts (root.aux/.bbl/.blg/.log/.out, *-eps-converted-to.pdf),
+# the superseded root_with_alts.tex, the bundled IEEEtran README, the
+# citation-audit note, and the ~46 unused generated figures.
+!docs/scitech-paper/
+docs/scitech-paper/*
+!docs/scitech-paper/root.tex
+!docs/scitech-paper/root.pdf
+!docs/scitech-paper/new-aiaa.cls
+!docs/scitech-paper/new-aiaa.bst
+!docs/scitech-paper/bibliography/
+docs/scitech-paper/bibliography/*
+!docs/scitech-paper/bibliography/aiaa_refs.bib
+!docs/scitech-paper/figs/
+docs/scitech-paper/figs/*
+!docs/scitech-paper/figs/0_ballistic_trajectory.eps
+!docs/scitech-paper/figs/39_ballistic_envelope.png
+!docs/scitech-paper/figs/quadrotor.png
+!docs/scitech-paper/figs/TO_04_landing_envelope_sat_on.eps
+!docs/scitech-paper/figs/TO_06_control_norm_sat_on.eps
+!docs/scitech-paper/figs/TO_07_landing_heatmap_sat_on.eps

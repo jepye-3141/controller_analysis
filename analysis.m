@@ -5,13 +5,15 @@ set_param(0, 'CacheFolder', '');
 
 %% Constants
 constants;
+% Hover-linearized B for gain K, mass m (A is mass-independent; the canonical
+% literals live in constants.m -- keep this row layout in sync with them).
+mkB = @(K,m) [zeros(2,4); -K/m 0 0 0; 0 K/Jxx 0 0; 0 0 K/Jyy 0; 0 0 0 K/Jzz; zeros(6,4)];
 STEP = 1;
 F8 = 2;
 SPIRAL = 3;
 STABILIZE = 4;
 
 
-%
 load_system("lqr_swarm")
 load_system("pid_redux")
 load_system("smc_swarm")
@@ -28,102 +30,15 @@ K1 = 0.7;
 K2 = 0.6;
 K3 = 0.5;
 
-A = [0 0 0 0 0 0 -g 0 0 0 0 0;
-     0 0 0 0 0 0 0 g 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 1 0 0 0 0 0 0 0;
-     0 0 0 1 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 1 0 0 0 0 0 0;
-     1 0 0 0 0 0 0 0 0 0 0 0;
-     0 1 0 0 0 0 0 0 0 0 0 0;
-     0 0 -1 0 0 0 0 0 0 0 0 0];
-B = [0 0 0 0;
-     0 0 0 0;
-     -KL/mL 0 0 0;
-     0 KL/Jxx 0 0;
-     0 0 KL/Jyy 0;
-     0 0 0 KL/Jzz;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0];
-A1 = [0 0 0 0 0 0 -g 0 0 0 0 0;
-     0 0 0 0 0 0 0 g 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 1 0 0 0 0 0 0 0;
-     0 0 0 1 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 1 0 0 0 0 0 0;
-     1 0 0 0 0 0 0 0 0 0 0 0;
-     0 1 0 0 0 0 0 0 0 0 0 0;
-     0 0 -1 0 0 0 0 0 0 0 0 0];
-B1 = [0 0 0 0;
-     0 0 0 0;
-     -K1/m1 0 0 0;
-     0 K1/Jxx 0 0;
-     0 0 K1/Jyy 0;
-     0 0 0 K1/Jzz;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0];
-A2 = [0 0 0 0 0 0 -g 0 0 0 0 0;
-     0 0 0 0 0 0 0 g 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 1 0 0 0 0 0 0 0;
-     0 0 0 1 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 1 0 0 0 0 0 0;
-     1 0 0 0 0 0 0 0 0 0 0 0;
-     0 1 0 0 0 0 0 0 0 0 0 0;
-     0 0 -1 0 0 0 0 0 0 0 0 0];
-B2 = [0 0 0 0;
-     0 0 0 0;
-     -K2/m2 0 0 0;
-     0 K2/Jxx 0 0;
-     0 0 K2/Jyy 0;
-     0 0 0 K2/Jzz;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0];
-A3 = [0 0 0 0 0 0 -g 0 0 0 0 0;
-     0 0 0 0 0 0 0 g 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 1 0 0 0 0 0 0 0;
-     0 0 0 1 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 1 0 0 0 0 0 0;
-     1 0 0 0 0 0 0 0 0 0 0 0;
-     0 1 0 0 0 0 0 0 0 0 0 0;
-     0 0 -1 0 0 0 0 0 0 0 0 0];
-B3 = [0 0 0 0;
-     0 0 0 0;
-     -K3/m3 0 0 0;
-     0 K3/Jxx 0 0;
-     0 0 K3/Jyy 0;
-     0 0 0 K3/Jzz;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0];
+% A is already in the workspace from `constants` (byte-identical literal);
+% per-group B differ only in gain K and mass m.
+B  = mkB(KL, mL);
+A1 = A;
+B1 = mkB(K1, m1);
+A2 = A;
+B2 = mkB(K2, m2);
+A3 = A;
+B3 = mkB(K3, m3);
 
 vel0 = [0; 0; 0];
 rotvel0 = [1; 1; 0];
@@ -146,37 +61,14 @@ step_out_discrete_smc_uncertainty = sim("discrete_smc_swarm")
 % No parametric uncertainty
 m = 0.8; % kg
 
-% Step 2: Apply current state to A, B, C, D matrices
-A = [0 0 0 0 0 0 -g 0 0 0 0 0;
-     0 0 0 0 0 0 0 g 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 0 0 0 0 0 0 0;
-     0 0 0 0 1 0 0 0 0 0 0 0;
-     0 0 0 1 0 0 0 0 0 0 0 0;
-     0 0 0 0 0 1 0 0 0 0 0 0;
-     1 0 0 0 0 0 0 0 0 0 0 0;
-     0 1 0 0 0 0 0 0 0 0 0 0;
-     0 0 -1 0 0 0 0 0 0 0 0 0];
-B = [0 0 0 0;
-     0 0 0 0;
-     -1/m 0 0 0;
-     0 1/Jxx 0 0;
-     0 0 1/Jyy 0;
-     0 0 0 1/Jzz;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0;
-     0 0 0 0];
+% rebuild linearized B at nominal mass (A is mass-independent and unchanged)
+B = mkB(1, m); % nominal gain K=1, matching the previous literal's 1/m
 
 A1 = A; A2 = A; A3 = A;
 B1 = B; B2 = B; B3 = B;
+clear mkB  % keep the whole-workspace analysis_log.mat variable set unchanged
 
 %% Step decrease trajectory
-% Initial conditions
 vel0 = [0; 0; 0];
 rotvel0 = [1; 1; 0];
 rot0 = [0; 0; 0];
@@ -194,7 +86,7 @@ step_out_smc = sim("smc_swarm")
 set_param("discrete_smc_swarm","StopTime","50", 'SimulationMode','Rapid')
 step_out_discrete_smc = sim("discrete_smc_swarm")
 
-%% Weird trajectories
+%% Figure-8 and spiral trajectories
 vel0 = [0; 0; 0];
 rotvel0 = [0; 0; 0];
 rot0 = [0; 0; 0];
@@ -225,19 +117,7 @@ spiral_out_discrete_smc = sim("discrete_smc_swarm")
 %% Ballistic case
 env = aero_constants('std_atm.csv', 'Aerodynamic_Char_120mm_Mortar.xlsx');
 
-launch.Vo      = 100;  % initial vel at muzzle exit in m/s
-launch.el      = 45;   % vertical angle of departure in deg (pos up)
-launch.az      = 15;   % horizontal angle of departure in deg (pos to right)
-launch.w_z0    = 1;    % initial pitch rate in rad/s (pos nose up)
-launch.w_y0    = 0.5;  % initial transverse yaw rate in rad/s (pos for left yaw)
-launch.alpha_0 = 2;    % exit elevation (deg)
-launch.beta_0  = -0.5; % exit azimuth (deg)
-% initial position of munition center of gravity (CG) wrt intertial frame
-launch.x_0     = 0;    % x-axis (m) - range direction
-launch.y_0     = 0;    % y-axis (m) - altitude
-launch.z_0     = 0;    % z-axis (m) - cross-range direction
-launch.t_max   = 300;  % sim end time
-launch.p       = 0;    % initial spin rate in rad/s
+launch = operational_launch();  % single source of the operational launch -- retune there only
 
 ballistic_solution = eom2(launch, env, false);
 
@@ -247,15 +127,16 @@ load_system("smc_swarm_single")
 load_system("discrete_smc_swarm_single")
 
 deploy_point = ballistic_solution.trajectory(ballistic_solution.apogee_idx, :).';
-rot0 = deg2rad(deploy_point(13:15));
-x0 = deploy_point(10:12);
-rot = eul2rotm([rot0(3) rot0(2) rot0(1)], "ZYX");
-
-vel0 = rot*deploy_point(1:3); % earth -> body
-rotvel0 = rot*deploy_point(4:6); % earth -> body
-
-xi = [vel0; rotvel0; rot0; x0];
+% Deploy seed: attitude from the pointing vector (cols 7:9), velocities and
+% rates mapped world->body consistently (2026-07-10 fix). Trajectory cols
+% 13:15 now carry the same derived attitude, backfilled by eom2 -- still
+% interpolate r and call the helper rather than reading the angle columns.
+xi = ballistic_deploy_state(deploy_point(1:3), deploy_point(4:6), ...
+    deploy_point(7:9), deploy_point(10:12));
 xf_ballistic = [xi(10:11,:);0];
+% Snapshot for the fig 38 ballistic settling block: the envelope loop below
+% overwrites xf_ballistic per test point.
+xf_ballistic_apogee = xf_ballistic;
 
 simcase = STABILIZE;
 set_param("lqr_swarm_single","StopTime","100", 'SimulationMode','Rapid')
@@ -267,26 +148,34 @@ step_out_smc_ballistic = sim("smc_swarm_single")
 set_param("discrete_smc_swarm_single","StopTime","100", 'SimulationMode','Rapid')
 step_out_discrete_smc_ballistic = sim("discrete_smc_swarm_single")
 
+% The four apogee runs are figure-only (never scored by ballistic_success),
+% so an early stop (in-model 1e5 blowup guard) would otherwise flow silently
+% into figs 36-38 as an interp1 NaN tail (bugsweep 2026-07-10, finding 17).
+apogee_runs  = {step_out_lqr_ballistic, step_out_pid_ballistic, ...
+                step_out_smc_ballistic, step_out_discrete_smc_ballistic};
+apogee_names = ["LQR", "PID", "cSMC", "dSMC"];
+for a = 1:numel(apogee_runs)
+    t_end_a = apogee_runs{a}.posout.Time(end);
+    if t_end_a < 100 - 1e-6
+        warning("analysis:apogee_early_stop", ...
+            "Apogee %s run stopped at t=%.2f s < 100 s (1e5 blowup guard); " + ...
+            "its fig 36-38 ballistic cells will be blank/truncated.", ...
+            apogee_names(a), t_end_a);
+    end
+end
+
 %% Ballistic envelope testing
-env = aero_constants('std_atm.csv', 'Aerodynamic_Char_120mm_Mortar.xlsx');
+% Reuses env / launch / ballistic_solution from the '%% Ballistic case'
+% section above: the envelope must fly the same arc as the apogee test
+% feeding figs 36-38. Retune the launch in operational_launch.m only.
 
-launch.Vo      = 100;  % initial vel at muzzle exit in m/s
-launch.el      = 45;   % vertical angle of departure in deg (pos up)
-launch.az      = 15;   % horizontal angle of departure in deg (pos to right)
-launch.w_z0    = 1;    % initial pitch rate in rad/s (pos nose up)
-launch.w_y0    = 0.5;  % initial transverse yaw rate in rad/s (pos for left yaw)
-launch.alpha_0 = 2;    % exit elevation (deg)
-launch.beta_0  = -0.5; % exit azimuth (deg)
-% initial position of munition center of gravity (CG) wrt intertial frame
-launch.x_0     = 0;    % x-axis (m) - range direction
-launch.y_0     = 0;    % y-axis (m) - altitude
-launch.z_0     = 0;    % z-axis (m) - cross-range direction
-launch.t_max   = 300;  % sim end time
-launch.p       = 0;    % initial spin rate in rad/s
-
-ballistic_solution = eom2(launch, env, false);
-
-test_points = 1:10:size(ballistic_solution.trajectory, 1);
+n_rows = size(ballistic_solution.trajectory, 1);
+test_points = 1:10:n_rows;
+% Never test the appended ground-impact row (altitude 0, full impact
+% velocity): with the fixed 0.1 s output grid, 1:10:rows lands on it whenever
+% rows == 1 (mod 10), and the criterion never checks z (bugsweep 2026-07-10
+% finding 11).
+test_points(test_points == n_rows) = [];
 n_test = size(test_points, 2);
 envelope_lqr_mask = false(1, n_test);
 envelope_pid_mask = false(1, n_test);
@@ -296,14 +185,8 @@ envelope_dsmc_sat_mask   = false(1, n_test);
 for i = 1:size(test_points,2)
     idx = test_points(i);
     deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
-    x0 = deploy_point(10:12);
-    rot = eul2rotm([rot0(3) rot0(2) rot0(1)], "ZYX");
-    
-    vel0 = rot*deploy_point(1:3); % earth -> body
-    rotvel0 = rot*deploy_point(4:6); % earth -> body
-    
-    xi = [vel0; rotvel0; rot0; x0];
+    xi = ballistic_deploy_state(deploy_point(1:3), deploy_point(4:6), ...
+        deploy_point(7:9), deploy_point(10:12));
     xf_ballistic = [xi(10:11,:);0];
     
     simcase = STABILIZE;
@@ -315,52 +198,48 @@ for i = 1:size(test_points,2)
     smc_trial = sim("smc_swarm_single")
     set_param("discrete_smc_swarm_single","StopTime","30", 'SimulationMode','Rapid')
     constants_struct.saturation_on = false;
+    constants_struct.unconstrained = true;    % nosat arm: canonical dsmc_no_constraints (no motor limits)
     discrete_smc_trial_nosat = sim("discrete_smc_swarm_single")
     constants_struct.saturation_on = true;
+    constants_struct.unconstrained = false;   % sat arm: Plan A+ handler (+ per-rotor clip)
     discrete_smc_trial_sat   = sim("discrete_smc_swarm_single")
 
-    if lqr_trial.tout(end) == 30
-        if norm(xi(10:11) - lqr_trial.posout.Data(:,1:2,end).') < 10
-            envelope_lqr_mask(i) = true;
-        end
+    % Success scored post-hoc by ballistic_success (eq:ballistic-success):
+    % full 30 s (blowup guard never tripped) + final XY within 10 m of
+    % deploy + velocity ratio <= 2 whole-trace + rotation-rate ratio <= 2
+    % for t > 1 s (grace window, default RotGraceT). rotvelout is the
+    % plant's Euler-angle rates [thetadot phidot psidot]
+    % (system_dynamics.m xdot(7:9)) -- the signal the termination charts norm;
+    % its logged shape ([3x1xT] lqr/dsmc vs [Tx3] pid/smc) is normalized
+    % inside ballistic_success.
+    v0_norm = norm(xi(1:3));
+    trials = {lqr_trial, pid_trial, smc_trial, ...
+              discrete_smc_trial_nosat, discrete_smc_trial_sat};
+    ok = false(1, numel(trials));
+    for k = 1:numel(trials)
+        ok(k) = ballistic_success(trials{k}.posout.Time, ...
+            squeeze(trials{k}.posout.Data(1,:,:)).', squeeze(trials{k}.velout.Data(1,:,:)).', ...
+            xi(10:11), v0_norm, 30, RotVel=trials{k}.rotvelout.Data);
     end
-    if pid_trial.tout(end) == 30
-        if norm(xi(10:11) - pid_trial.posout.Data(:,1:2,end).') < 10
-            envelope_pid_mask(i) = true;
-        end
-    end
-    if smc_trial.tout(end) == 30
-        if norm(xi(10:11) - smc_trial.posout.Data(:,1:2,end).') < 10
-            envelope_smc_mask(i) = true;
-        end
-    end
-    if discrete_smc_trial_nosat.tout(end) == 30
-        if norm(xi(10:11) - discrete_smc_trial_nosat.posout.Data(:,1:2,end).') < 10
-            envelope_dsmc_nosat_mask(i) = true;
-        end
-    end
-    if discrete_smc_trial_sat.tout(end) == 30
-        if norm(xi(10:11) - discrete_smc_trial_sat.posout.Data(:,1:2,end).') < 10
-            envelope_dsmc_sat_mask(i) = true;
-        end
-    end
+    envelope_lqr_mask(i)        = ok(1);
+    envelope_pid_mask(i)        = ok(2);
+    envelope_smc_mask(i)        = ok(3);
+    envelope_dsmc_nosat_mask(i) = ok(4);
+    envelope_dsmc_sat_mask(i)   = ok(5);
 end
+clear trials ok  % analysis_log.mat is a whole-workspace save; keep its variable set lean
 ballistic_envelope_lqr = test_points(envelope_lqr_mask);
 ballistic_envelope_pid = test_points(envelope_pid_mask);
 ballistic_envelope_smc = test_points(envelope_smc_mask);
 ballistic_envelope_dsmc_nosat = test_points(envelope_dsmc_nosat_mask);
 ballistic_envelope_dsmc_sat   = test_points(envelope_dsmc_sat_mask);
 
-%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Plot setup
 close all;
 set_default_fonts();
 
 set(0,'DefaultFigureVisible','on')
 set(gcf,'visible','on')
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Positional Plots
 
 
@@ -420,7 +299,7 @@ for i=1:10
     plot3(squeeze(step_out_smc_uncertainty.posout.Data(i,1,:)), ...
         squeeze(step_out_smc_uncertainty.posout.Data(i,2,:)), ...
         squeeze(step_out_smc_uncertainty.posout.Data(i,3,:)))
-    title("Step, SMC, uncertainty")
+    title("Step, cSMC, uncertainty")
     view(-37.5, 30)
 end
 
@@ -579,9 +458,12 @@ uncertain_cmd = cat(3, x0_step, uncertain_cmd);
 f8_cmd = cat(3, [0;0;0], f8_cmd);
 spiral_cmd = cat(3, [0;0;0], spiral_cmd);
 
-offsets = [0 1 -1 2 3 4 -2 3 5 -4;
-           0 0 0 0 0 0 0 0 0 0;
-           0 0 0 0 0 0 0 0 0 0];
+% Formation X-offsets in model (posout) drone order -- MUST match the order
+% baked into the swarm .slx initial conditions. Single source: the delta-
+% distance heatmaps below derive initial_positions/ideal_distances from it.
+% Only col 1 (leader) is plotted below.
+formation_x = [0 1 2 3 4 5 -1 -2 -4 -3];
+offsets = [formation_x; zeros(2,10)];
 
 figure
 subplot(2,2,1)
@@ -652,7 +534,7 @@ ballistic_time = 0:0.1:100;
 f8_time = 0:0.1:150;
 spiral_time = 0:0.1:250;
 
-% Step ====================================================================
+% Step
 interp_step_lqr_pos = interp1(step_out_lqr.posout.Time, permute(step_out_lqr.posout.Data, [3 1 2]), step_time);
 interp_step_smc_pos = interp1(step_out_smc.posout.Time, permute(step_out_smc.posout.Data, [3 1 2]), step_time);
 interp_step_discrete_smc_pos = interp1(step_out_discrete_smc.posout.Time, permute(step_out_discrete_smc.posout.Data, [3 1 2]), step_time);
@@ -671,75 +553,15 @@ step_discrete_smc_ke = 0.5*m*temp;
 temp = sum(interp_step_pid_vel.^2, 3);
 step_pid_ke = 0.5*m*temp;
 
-step_lqr_min_distances = [];
-step_lqr_avg_distances = [];
-step_lqr_max_distances = [];
-for i=1:10
-    temp = repmat(interp_step_lqr_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_lqr_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
+[step_lqr_min_distances, step_lqr_avg_distances, step_lqr_max_distances] = pairwise_distance_stats(interp_step_lqr_pos);
 
-    step_lqr_min_distances = [step_lqr_min_distances; min_distance];
-    step_lqr_max_distances = [step_lqr_max_distances; max_distance];
+[step_smc_min_distances, step_smc_avg_distances, step_smc_max_distances] = pairwise_distance_stats(interp_step_smc_pos);
 
-    avg_distance = mean(temp, 1);
-    step_lqr_avg_distances = [step_lqr_avg_distances; avg_distance];
-end
+[step_discrete_smc_min_distances, step_discrete_smc_avg_distances, step_discrete_smc_max_distances] = pairwise_distance_stats(interp_step_discrete_smc_pos);
 
-step_smc_min_distances = [];
-step_smc_avg_distances = [];
-step_smc_max_distances = [];
-for i=1:10
-    temp = repmat(interp_step_smc_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_smc_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
+[step_pid_min_distances, step_pid_avg_distances, step_pid_max_distances] = pairwise_distance_stats(interp_step_pid_pos);
 
-    step_smc_min_distances = [step_smc_min_distances; min_distance];
-    step_smc_max_distances = [step_smc_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_smc_avg_distances = [step_smc_avg_distances; avg_distance];
-end
-
-step_discrete_smc_min_distances = [];
-step_discrete_smc_avg_distances = [];
-step_discrete_smc_max_distances = [];
-for i=1:10
-    temp = repmat(interp_step_discrete_smc_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_discrete_smc_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    step_discrete_smc_min_distances = [step_discrete_smc_min_distances; min_distance];
-    step_discrete_smc_max_distances = [step_discrete_smc_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_discrete_smc_avg_distances = [step_discrete_smc_avg_distances; avg_distance];
-end
-
-step_pid_min_distances = [];
-step_pid_avg_distances = [];
-step_pid_max_distances = [];
-for i=1:10
-    temp = repmat(interp_step_pid_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_pid_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    step_pid_min_distances = [step_pid_min_distances; min_distance];
-    step_pid_max_distances = [step_pid_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_pid_avg_distances = [step_pid_avg_distances; avg_distance];
-end
-
-% Ballistic ===============================================================
+% Ballistic
 interp_step_lqr_ballistic_pos = interp1(step_out_lqr_ballistic.posout.Time, permute(step_out_lqr_ballistic.posout.Data, [3 1 2]), ballistic_time);
 interp_step_smc_ballistic_pos = interp1(step_out_smc_ballistic.posout.Time, permute(step_out_smc_ballistic.posout.Data, [3 1 2]), ballistic_time);
 interp_step_discrete_smc_ballistic_pos = interp1(step_out_discrete_smc_ballistic.posout.Time, permute(step_out_discrete_smc_ballistic.posout.Data, [3 1 2]), ballistic_time);
@@ -758,75 +580,12 @@ step_discrete_smc_ballistic_ke = 0.5*m*temp;
 temp = sum(interp_step_pid_ballistic_vel.^2, 3);
 step_pid_ballistic_ke = 0.5*m*temp;
 
-step_lqr_ballistic_min_distances = [];
-step_lqr_ballistic_avg_distances = [];
-step_lqr_ballistic_max_distances = [];
-for i=1:1
-    temp = repmat(interp_step_lqr_ballistic_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_lqr_ballistic_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
+% (Removed 2026-07-10, bugsweep finding 19: the four single-drone ballistic
+% self-distance blocks computed identically-zero 1x10 rows -- one drone's
+% trajectory minus 10 repmat copies of itself -- had zero consumers repo-
+% wide, and were persisted into logs/analysis_log.mat every run.)
 
-    step_lqr_ballistic_min_distances = [step_lqr_ballistic_min_distances; min_distance];
-    step_lqr_ballistic_max_distances = [step_lqr_ballistic_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_lqr_ballistic_avg_distances = [step_lqr_ballistic_avg_distances; avg_distance];
-end
-
-step_smc_ballistic_min_distances = [];
-step_smc_ballistic_avg_distances = [];
-step_smc_ballistic_max_distances = [];
-for i=1:1
-    temp = repmat(interp_step_smc_ballistic_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_smc_ballistic_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    step_smc_ballistic_min_distances = [step_smc_ballistic_min_distances; min_distance];
-    step_smc_ballistic_max_distances = [step_smc_ballistic_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_smc_ballistic_avg_distances = [step_smc_ballistic_avg_distances; avg_distance];
-end
-
-step_discrete_smc_ballistic_min_distances = [];
-step_discrete_smc_ballistic_avg_distances = [];
-step_discrete_smc_ballistic_max_distances = [];
-for i=1:1
-    temp = repmat(interp_step_discrete_smc_ballistic_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_discrete_smc_ballistic_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    step_discrete_smc_ballistic_min_distances = [step_discrete_smc_ballistic_min_distances; min_distance];
-    step_discrete_smc_ballistic_max_distances = [step_discrete_smc_ballistic_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_discrete_smc_ballistic_avg_distances = [step_discrete_smc_ballistic_avg_distances; avg_distance];
-end
-
-step_pid_ballistic_min_distances = [];
-step_pid_ballistic_avg_distances = [];
-step_pid_ballistic_max_distances = [];
-for i=1:1
-    temp = repmat(interp_step_pid_ballistic_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_pid_ballistic_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    step_pid_ballistic_min_distances = [step_pid_ballistic_min_distances; min_distance];
-    step_pid_ballistic_max_distances = [step_pid_ballistic_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_pid_ballistic_avg_distances = [step_pid_ballistic_avg_distances; avg_distance];
-end
-
-% Uncertainty =============================================================
+% Uncertainty
 interp_step_lqr_uncertainty_pos = interp1(step_out_lqr_uncertainty.posout.Time, permute(step_out_lqr_uncertainty.posout.Data, [3 1 2]), step_time);
 interp_step_smc_uncertainty_pos = interp1(step_out_smc_uncertainty.posout.Time, permute(step_out_smc_uncertainty.posout.Data, [3 1 2]), step_time);
 interp_step_discrete_smc_uncertainty_pos = interp1(step_out_discrete_smc_uncertainty.posout.Time, permute(step_out_discrete_smc_uncertainty.posout.Data, [3 1 2]), step_time);
@@ -850,72 +609,13 @@ step_discrete_smc_uncertainty_ke = 0.5*(temp.*(mass_uncertain'));
 temp = sum(interp_step_pid_uncertainty_vel.^2, 3);
 step_pid_uncertainty_ke = 0.5*(temp.*(mass_uncertain'));
 
-step_lqr_uncertainty_min_distances = [];
-step_lqr_uncertainty_avg_distances = [];
-step_lqr_uncertainty_max_distances = [];
-for i=1:10
-    temp = repmat(interp_step_lqr_uncertainty_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_lqr_uncertainty_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
+[step_lqr_uncertainty_min_distances, step_lqr_uncertainty_avg_distances, step_lqr_uncertainty_max_distances] = pairwise_distance_stats(interp_step_lqr_uncertainty_pos);
 
-    step_lqr_uncertainty_min_distances = [step_lqr_uncertainty_min_distances; min_distance];
-    step_lqr_uncertainty_max_distances = [step_lqr_uncertainty_max_distances; max_distance];
-    avg_distance = mean(temp, 1);
-    step_lqr_uncertainty_avg_distances = [step_lqr_uncertainty_avg_distances; avg_distance];
-end
+[step_smc_uncertainty_min_distances, step_smc_uncertainty_avg_distances, step_smc_uncertainty_max_distances] = pairwise_distance_stats(interp_step_smc_uncertainty_pos);
 
-step_smc_uncertainty_min_distances = [];
-step_smc_uncertainty_avg_distances = [];
-step_smc_uncertainty_max_distances = [];
-for i=1:10
-    temp = repmat(interp_step_smc_uncertainty_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_smc_uncertainty_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
+[step_discrete_smc_uncertainty_min_distances, step_discrete_smc_uncertainty_avg_distances, step_discrete_smc_uncertainty_max_distances] = pairwise_distance_stats(interp_step_discrete_smc_uncertainty_pos);
 
-    step_smc_uncertainty_min_distances = [step_smc_uncertainty_min_distances; min_distance];
-    step_smc_uncertainty_max_distances = [step_smc_uncertainty_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_smc_uncertainty_avg_distances = [step_smc_uncertainty_avg_distances; avg_distance];
-end
-
-step_discrete_smc_uncertainty_min_distances = [];
-step_discrete_smc_uncertainty_avg_distances = [];
-step_discrete_smc_uncertainty_max_distances = [];
-for i=1:10
-    temp = repmat(interp_step_discrete_smc_uncertainty_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_discrete_smc_uncertainty_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    step_discrete_smc_uncertainty_min_distances = [step_discrete_smc_uncertainty_min_distances; min_distance];
-    step_discrete_smc_uncertainty_max_distances = [step_discrete_smc_uncertainty_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_discrete_smc_uncertainty_avg_distances = [step_discrete_smc_uncertainty_avg_distances; avg_distance];
-end
-
-step_pid_uncertainty_min_distances = [];
-step_pid_uncertainty_avg_distances = [];
-step_pid_uncertainty_max_distances = [];
-for i=1:10
-    temp = repmat(interp_step_pid_uncertainty_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_step_pid_uncertainty_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    step_pid_uncertainty_min_distances = [step_pid_uncertainty_min_distances; min_distance];
-    step_pid_uncertainty_max_distances = [step_pid_uncertainty_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    step_pid_uncertainty_avg_distances = [step_pid_uncertainty_avg_distances; avg_distance];
-end
+[step_pid_uncertainty_min_distances, step_pid_uncertainty_avg_distances, step_pid_uncertainty_max_distances] = pairwise_distance_stats(interp_step_pid_uncertainty_pos);
 
 interp_f8_lqr_pos = interp1(f8_out_lqr.posout.Time, permute(f8_out_lqr.posout.Data, [3 1 2]), f8_time);
 interp_f8_smc_pos = interp1(f8_out_smc.posout.Time, permute(f8_out_smc.posout.Data, [3 1 2]), f8_time);
@@ -938,73 +638,13 @@ f8_discrete_smc_ke = 0.5*m*temp;
 temp = sum(interp_f8_pid_vel.^2, 3);
 f8_pid_ke = 0.5*m*temp;
 
-f8_lqr_min_distances = [];
-f8_lqr_avg_distances = [];
-f8_lqr_max_distances = [];
-for i=1:10
-    temp = repmat(interp_f8_lqr_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_f8_lqr_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
+[f8_lqr_min_distances, f8_lqr_avg_distances, f8_lqr_max_distances] = pairwise_distance_stats(interp_f8_lqr_pos);
 
-    f8_lqr_min_distances = [f8_lqr_min_distances; min_distance];
-    f8_lqr_max_distances = [f8_lqr_max_distances; max_distance];
+[f8_smc_min_distances, f8_smc_avg_distances, f8_smc_max_distances] = pairwise_distance_stats(interp_f8_smc_pos);
 
-    avg_distance = mean(temp, 1);
-    f8_lqr_avg_distances = [f8_lqr_avg_distances; avg_distance];
-end
+[f8_discrete_smc_min_distances, f8_discrete_smc_avg_distances, f8_discrete_smc_max_distances] = pairwise_distance_stats(interp_f8_discrete_smc_pos);
 
-f8_smc_min_distances = [];
-f8_smc_avg_distances = [];
-f8_smc_max_distances = [];
-for i=1:10
-    temp = repmat(interp_f8_smc_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_f8_smc_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    f8_smc_min_distances = [f8_smc_min_distances; min_distance];
-    f8_smc_max_distances = [f8_smc_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    f8_smc_avg_distances = [f8_smc_avg_distances; avg_distance];
-end
-
-f8_discrete_smc_min_distances = [];
-f8_discrete_smc_avg_distances = [];
-f8_discrete_smc_max_distances = [];
-for i=1:10
-    temp = repmat(interp_f8_discrete_smc_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_f8_discrete_smc_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    f8_discrete_smc_min_distances = [f8_discrete_smc_min_distances; min_distance];
-    f8_discrete_smc_max_distances = [f8_discrete_smc_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    f8_discrete_smc_avg_distances = [f8_discrete_smc_avg_distances; avg_distance];
-end
-
-f8_pid_min_distances = [];
-f8_pid_avg_distances = [];
-f8_pid_max_distances = [];
-for i=1:10
-    temp = repmat(interp_f8_pid_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_f8_pid_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    f8_pid_min_distances = [f8_pid_min_distances; min_distance];
-    f8_pid_max_distances = [f8_pid_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    f8_pid_avg_distances = [f8_pid_avg_distances; avg_distance];
-end
+[f8_pid_min_distances, f8_pid_avg_distances, f8_pid_max_distances] = pairwise_distance_stats(interp_f8_pid_pos);
 
 interp_spiral_out_lqr_pos = interp1(spiral_out_lqr.posout.Time, permute(spiral_out_lqr.posout.Data, [3 1 2]), spiral_time);
 interp_spiral_out_smc_pos = interp1(spiral_out_smc.posout.Time, permute(spiral_out_smc.posout.Data, [3 1 2]), spiral_time);
@@ -1027,73 +667,13 @@ spiral_discrete_smc_ke = 0.5*m*temp;
 temp = sum(interp_spiral_out_pid_vel.^2, 3);
 spiral_pid_ke = 0.5*m*temp;
 
-spiral_lqr_min_distances = [];
-spiral_lqr_avg_distances = [];
-spiral_lqr_max_distances = [];
-for i=1:10
-    temp  = repmat(interp_spiral_out_lqr_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_spiral_out_lqr_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
+[spiral_lqr_min_distances, spiral_lqr_avg_distances, spiral_lqr_max_distances] = pairwise_distance_stats(interp_spiral_out_lqr_pos);
 
-    spiral_lqr_min_distances = [spiral_lqr_min_distances; min_distance];
-    spiral_lqr_max_distances = [spiral_lqr_max_distances; max_distance];
+[spiral_smc_min_distances, spiral_smc_avg_distances, spiral_smc_max_distances] = pairwise_distance_stats(interp_spiral_out_smc_pos);
 
-    avg_distance = mean(temp, 1);
-    spiral_lqr_avg_distances = [spiral_lqr_avg_distances; avg_distance];
-end
+[spiral_discrete_smc_min_distances, spiral_discrete_smc_avg_distances, spiral_discrete_smc_max_distances] = pairwise_distance_stats(interp_spiral_out_discrete_smc_pos);
 
-spiral_smc_min_distances = [];
-spiral_smc_avg_distances = [];
-spiral_smc_max_distances = [];
-for i=1:10
-    temp  = repmat(interp_spiral_out_smc_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_spiral_out_smc_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    spiral_smc_min_distances = [spiral_smc_min_distances; min_distance];
-    spiral_smc_max_distances = [spiral_smc_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    spiral_smc_avg_distances = [spiral_smc_avg_distances; avg_distance];
-end
-
-spiral_discrete_smc_min_distances = [];
-spiral_discrete_smc_avg_distances = [];
-spiral_discrete_smc_max_distances = [];
-for i=1:10
-    temp  = repmat(interp_spiral_out_discrete_smc_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_spiral_out_discrete_smc_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    spiral_discrete_smc_min_distances = [spiral_discrete_smc_min_distances; min_distance];
-    spiral_discrete_smc_max_distances = [spiral_discrete_smc_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    spiral_discrete_smc_avg_distances = [spiral_discrete_smc_avg_distances; avg_distance];
-end
-
-spiral_pid_min_distances = [];
-spiral_pid_avg_distances = [];
-spiral_pid_max_distances = [];
-for i=1:10
-    temp  = repmat(interp_spiral_out_pid_pos(:, i, :), [1, 10, 1]);
-    temp_pos = abs(interp_spiral_out_pid_pos - temp);
-    temp = sqrt(sum(temp_pos.^2, 3));
-    min_distance = min(temp, [], 1);
-    max_distance = max(temp, [], 1);
-
-    spiral_pid_min_distances = [spiral_pid_min_distances; min_distance];
-    spiral_pid_max_distances = [spiral_pid_max_distances; max_distance];
-
-    avg_distance = mean(temp, 1);
-    spiral_pid_avg_distances = [spiral_pid_avg_distances; avg_distance];
-end
+[spiral_pid_min_distances, spiral_pid_avg_distances, spiral_pid_max_distances] = pairwise_distance_stats(interp_spiral_out_pid_pos);
 
 %% Distance Heatmaps
 figure
@@ -1465,22 +1045,10 @@ ylabel("Drone index (1 is leader)")
 export_figure("figs/18_spiral_pid_distances")
 
 %% Delta-Distance Heatmaps
-initial_positions = [0 0 0;
-                     1 0 0;
-                     -1 0 0;
-                     2 0 0;
-                     3 0 0;
-                     4 0 0;
-                     -2 0 0;
-                     -3 0 0;
-                     5 0 0;
-                     -4 0 0];
-ideal_distances = zeros(10,10);
-for i=1:10
-    for j=1:10
-        ideal_distances(i, j) = norm(initial_positions(i,:) - initial_positions(j,:));
-    end
-end
+% Nominal formation derived from formation_x (defined with `offsets` above);
+% row order MUST match posout.
+initial_positions = [formation_x.', zeros(10,2)];
+ideal_distances = abs(formation_x.' - formation_x); % formation is 1-D along X, so |dx| = full 3-D separation
 
 figure
 hold on
@@ -1883,55 +1451,18 @@ step_uncertainty_score_mat = [step_lqr_uncertainty_min_delta_score step_smc_unce
                               step_lqr_uncertainty_avg_delta_score step_smc_uncertainty_avg_delta_score step_discrete_smc_uncertainty_avg_delta_score step_pid_uncertainty_avg_delta_score;   
                               step_lqr_uncertainty_max_delta_score step_smc_uncertainty_max_delta_score step_discrete_smc_uncertainty_max_delta_score step_pid_uncertainty_max_delta_score];
 
-f8_lqr_min_delta_score = norm(f8_lqr_min_distances-ideal_distances, 'fro')/norm(f8_lqr_min_distances+ideal_distances, 'fro');
-f8_lqr_avg_delta_score = norm(f8_lqr_avg_distances-ideal_distances, 'fro')/norm(f8_lqr_avg_distances+ideal_distances, 'fro');
-f8_lqr_max_delta_score = norm(f8_lqr_max_distances-ideal_distances, 'fro')/norm(f8_lqr_max_distances+ideal_distances, 'fro');
-f8_smc_min_delta_score = norm(f8_smc_min_distances-ideal_distances, 'fro')/norm(f8_smc_min_distances+ideal_distances, 'fro');
-f8_smc_avg_delta_score = norm(f8_smc_avg_distances-ideal_distances, 'fro')/norm(f8_smc_avg_distances+ideal_distances, 'fro');
-f8_smc_max_delta_score = norm(f8_smc_max_distances-ideal_distances, 'fro')/norm(f8_smc_max_distances+ideal_distances, 'fro');
-f8_discrete_smc_min_delta_score = norm(f8_discrete_smc_min_distances-ideal_distances, 'fro')/norm(f8_discrete_smc_min_distances+ideal_distances, 'fro');
-f8_discrete_smc_avg_delta_score = norm(f8_discrete_smc_avg_distances-ideal_distances, 'fro')/norm(f8_discrete_smc_avg_distances+ideal_distances, 'fro');
-f8_discrete_smc_max_delta_score = norm(f8_discrete_smc_max_distances-ideal_distances, 'fro')/norm(f8_discrete_smc_max_distances+ideal_distances, 'fro');
-f8_pid_min_delta_score = norm(f8_pid_min_distances-ideal_distances, 'fro')/norm(f8_pid_min_distances+ideal_distances, 'fro');
-f8_pid_avg_delta_score = norm(f8_pid_avg_distances-ideal_distances, 'fro')/norm(f8_pid_avg_distances+ideal_distances, 'fro');
-f8_pid_max_delta_score = norm(f8_pid_max_distances-ideal_distances, 'fro')/norm(f8_pid_max_distances+ideal_distances, 'fro');
-f8_score_mat = [f8_lqr_min_delta_score f8_smc_min_delta_score f8_discrete_smc_min_delta_score f8_pid_min_delta_score; 
-                f8_lqr_avg_delta_score f8_smc_avg_delta_score f8_discrete_smc_avg_delta_score f8_pid_avg_delta_score;   
-                f8_lqr_max_delta_score f8_smc_max_delta_score f8_discrete_smc_max_delta_score f8_pid_max_delta_score];
-
-spiral_lqr_min_delta_score = norm(spiral_lqr_min_distances-ideal_distances, 'fro')/norm(spiral_lqr_min_distances+ideal_distances, 'fro');
-spiral_lqr_avg_delta_score = norm(spiral_lqr_avg_distances-ideal_distances, 'fro')/norm(spiral_lqr_avg_distances+ideal_distances, 'fro');
-spiral_lqr_max_delta_score = norm(spiral_lqr_max_distances-ideal_distances, 'fro')/norm(spiral_lqr_max_distances+ideal_distances, 'fro');
-spiral_smc_min_delta_score = norm(spiral_smc_min_distances-ideal_distances, 'fro')/norm(spiral_smc_min_distances+ideal_distances, 'fro');
-spiral_smc_avg_delta_score = norm(spiral_smc_avg_distances-ideal_distances, 'fro')/norm(spiral_smc_avg_distances+ideal_distances, 'fro');
-spiral_smc_max_delta_score = norm(spiral_smc_max_distances-ideal_distances, 'fro')/norm(spiral_smc_max_distances+ideal_distances, 'fro');
-spiral_discrete_smc_min_delta_score = norm(spiral_discrete_smc_min_distances-ideal_distances, 'fro')/norm(spiral_discrete_smc_min_distances+ideal_distances, 'fro');
-spiral_discrete_smc_avg_delta_score = norm(spiral_discrete_smc_avg_distances-ideal_distances, 'fro')/norm(spiral_discrete_smc_avg_distances+ideal_distances, 'fro');
-spiral_discrete_smc_max_delta_score = norm(spiral_discrete_smc_max_distances-ideal_distances, 'fro')/norm(spiral_discrete_smc_max_distances+ideal_distances, 'fro');
-spiral_pid_min_delta_score = norm(spiral_pid_min_distances-ideal_distances, 'fro')/norm(spiral_pid_min_distances+ideal_distances, 'fro');
-spiral_pid_avg_delta_score = norm(spiral_pid_avg_distances-ideal_distances, 'fro')/norm(spiral_pid_avg_distances+ideal_distances, 'fro');
-spiral_pid_max_delta_score = norm(spiral_pid_max_distances-ideal_distances, 'fro')/norm(spiral_pid_max_distances+ideal_distances, 'fro');
-spiral_score_mat = [spiral_lqr_min_delta_score spiral_smc_min_delta_score spiral_discrete_smc_min_delta_score spiral_pid_min_delta_score; 
-                    spiral_lqr_avg_delta_score spiral_smc_avg_delta_score spiral_discrete_smc_avg_delta_score spiral_pid_avg_delta_score;   
-                    spiral_lqr_max_delta_score spiral_smc_max_delta_score spiral_discrete_smc_max_delta_score spiral_pid_max_delta_score];
 
 rowlabels = {'min separation', 'average separation', 'max separation'};
 collabels = {'LQR', 'cSMC', 'dSMC', 'PID'};
 figure
 subplot(2,1,1)
-h1 = heatmap(collabels, rowlabels, 100*(1-step_score_mat), 'FontSize', 16, 'FontName', 'Times')
+h1 = heatmap(collabels, rowlabels, 100*(1-step_score_mat), 'FontSize', 16, 'FontName', 'Times');
 title("Step impulse nominal vs actual separation % similarity")
-h1.CellLabelFormat = '%.2f %%'; 
+h1.CellLabelFormat = '%.2f %%';
 subplot(2,1,2)
-h2 = heatmap(collabels, rowlabels, 100*(1-step_uncertainty_score_mat), 'FontSize', 16, 'FontName', 'Times')
+h2 = heatmap(collabels, rowlabels, 100*(1-step_uncertainty_score_mat), 'FontSize', 16, 'FontName', 'Times');
 title("Step impulse with uncertainty nominal vs actual separation % similarity")
-h2.CellLabelFormat = '%.2f %%'; 
-% subplot(2,2,3)
-% h3 = heatmap(collabels, rowlabels, 1-f8_score_mat, 'FontSize', 12, 'FontName', 'Times')
-% title("Figure-8 nominal vs actual separation % similarity")
-% subplot(2,2,4)
-% h4 = heatmap(collabels, rowlabels, 1-spiral_score_mat, 'FontSize', 12, 'FontName', 'Times')
-% title("Arithmetic spiral nominal vs actual separation % similarity")
+h2.CellLabelFormat = '%.2f %%';
 export_figure("figs/35_score_table")
 
 %% Kinetic Energy Plots
@@ -2002,7 +1533,7 @@ hold on
 for i=1:10
     plot(step_time, ...
         step_smc_uncertainty_ke(:,i))
-    title("Step, SMC, uncertainty")
+    title("Step, cSMC, uncertainty")
     xlabel("Time (s)")
     ylabel("Kinetic energy (J)")
 end
@@ -2162,7 +1693,9 @@ for i=1:1
     title("Ballistic, PID")
     xlabel("Time (s)")
     ylabel("Kinetic energy (J)")
-    ylim([0, max(max(step_lqr_ballistic_ke)*5)])
+    % Autoscale to PID's own trace: slaving to 5x LQR's max (as the other
+    % panels do) rendered PID as an unreadable flat line whenever LQR
+    % diverged (bugsweep 2026-07-10 finding 18).
 end
 legend("Leader")
 
@@ -2192,65 +1725,39 @@ avg_step_lqr_uncertainty_ke             = mean(mean(step_lqr_uncertainty_ke, 2))
 avg_step_smc_uncertainty_ke             = mean(mean(step_smc_uncertainty_ke, 2));
 avg_step_discrete_smc_uncertainty_ke    = mean(mean(step_discrete_smc_uncertainty_ke, 2));
 avg_step_pid_uncertainty_ke             = mean(mean(step_pid_uncertainty_ke, 2));
-avg_f8_lqr_ke                           = mean(mean(f8_lqr_ke, 2));
-avg_f8_smc_ke                           = mean(mean(f8_smc_ke, 2));
-avg_f8_discrete_smc_ke                  = mean(mean(f8_discrete_smc_ke, 2));
-avg_f8_pid_ke                           = mean(mean(f8_pid_ke, 2));
-avg_spiral_lqr_ke                       = mean(mean(spiral_lqr_ke, 2));
-avg_spiral_smc_ke                       = mean(mean(spiral_smc_ke, 2));
-avg_spiral_discrete_smc_ke              = mean(mean(spiral_discrete_smc_ke, 2));
-avg_spiral_pid_ke                       = mean(mean(spiral_pid_ke, 2));
 
 unified_ke_step = [avg_step_lqr_ke avg_step_smc_ke avg_step_discrete_smc_ke avg_step_pid_ke];
 unified_ke_step_ballistic = [avg_step_lqr_ballistic_ke avg_step_smc_ballistic_ke avg_step_discrete_smc_ballistic_ke avg_step_pid_ballistic_ke];
 unified_ke_uncertainty = [avg_step_lqr_uncertainty_ke avg_step_smc_uncertainty_ke avg_step_discrete_smc_uncertainty_ke ...
     avg_step_pid_uncertainty_ke];
-unified_ke_f8 = [avg_f8_lqr_ke avg_f8_smc_ke avg_f8_discrete_smc_ke avg_f8_pid_ke];
-unified_ke_spiral = [avg_spiral_lqr_ke avg_spiral_smc_ke avg_spiral_discrete_smc_ke avg_spiral_pid_ke];
 
 ke_scores_step = zeros(4,4);
 ke_scores_ballistic = zeros(4,4);
 ke_scores_uncertainty = zeros(4,4);
-ke_scores_f8 = zeros(4,4);
-ke_scores_spiral = zeros(4,4);
 for i=1:4
     for j=1:4
         ke_scores_step(i,j) = 100*(unified_ke_step(i) - unified_ke_step(j)) / (unified_ke_step(i) + unified_ke_step(j));
         ke_scores_ballistic(i,j) = 100*(unified_ke_step_ballistic(i) - unified_ke_step_ballistic(j)) / (unified_ke_step_ballistic(i) + unified_ke_step_ballistic(j));
         ke_scores_uncertainty(i,j) = 100*(unified_ke_uncertainty(i) - unified_ke_uncertainty(j)) / (unified_ke_uncertainty(i) + unified_ke_uncertainty(j));
-        ke_scores_f8(i,j) = 100*(unified_ke_f8(i) - unified_ke_f8(j)) / (unified_ke_f8(i) + unified_ke_f8(j));
-        ke_scores_spiral(i,j) = 100*(unified_ke_spiral(i) - unified_ke_spiral(j)) / (unified_ke_spiral(i) + unified_ke_spiral(j));
     end
 end
 
 figure
 conlabels = {'LQR', 'cSMC', 'dSMC', 'PID'};
 subplot(3,1,1)
-h1 = heatmap(conlabels, conlabels, ke_scores_step, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
+h1 = heatmap(conlabels, conlabels, ke_scores_step, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times');
 title("Relative % per-timestep average KE, step impulse")
 h1.CellLabelFormat = '%.2f %%'; 
 clim([-50 50])
 
 subplot(3,1,2)
-h2 = heatmap(conlabels, conlabels, ke_scores_uncertainty, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
+h2 = heatmap(conlabels, conlabels, ke_scores_uncertainty, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times');
 title("Relative % per-timestep average KE, step w/ uncertainty")
 h2.CellLabelFormat = '%.2f %%'; 
 clim([-50 50])
 
-% subplot(3,2,3)
-% h3 = heatmap(conlabels, conlabels, ke_scores_f8, "Colormap", jet, 'FontName', 'Times')
-% title("Relative % integrated kinetic energy over time, step impulse figure-8")
-% h3.CellLabelFormat = '%.2f %%'; 
-% clim([-50 50])
-% 
-% subplot(3,2,4)
-% h4 = heatmap(conlabels, conlabels, ke_scores_spiral, "Colormap", jet, 'FontName', 'Times')
-% title("Relative % integrated kinetic energy over time, step impulse arithmetic spiral")
-% h4.CellLabelFormat = '%.2f %%'; 
-% clim([-50 50])
-
 subplot(3,1,3)
-h3 = heatmap(conlabels, conlabels, ke_scores_ballistic, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
+h3 = heatmap(conlabels, conlabels, ke_scores_ballistic, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times');
 title("Relative % per-timestep average KE, ballistic step")
 h3.CellLabelFormat = '%.2f %%'; 
 clim([-50 50])
@@ -2263,7 +1770,7 @@ norm(interp_step_discrete_smc_uncertainty_pos - interp_step_discrete_smc_pos, 'f
 norm(interp_step_pid_uncertainty_pos - interp_step_pid_pos, 'fro')
 
 %% Settling time
-% Step analysis
+% Step: settled at first t where worst-drone deviation from xf <= 5% of its step |xf - xi|
 xi_lqr = interp_step_lqr_pos(1,:,:);
 xi_smc = interp_step_smc_pos(1,:,:);
 xi_discrete_smc = interp_step_discrete_smc_pos(1,:,:);
@@ -2325,10 +1832,19 @@ xi_lqr_ballistic = interp_step_lqr_ballistic_pos(1,:,:);
 xi_smc_ballistic = interp_step_smc_ballistic_pos(1,:,:);
 xi_discrete_smc_ballistic = interp_step_discrete_smc_ballistic_pos(1,:,:);
 xi_pid_ballistic = interp_step_pid_ballistic_pos(1,:,:);
-xf_lqr_ballistic = interp_step_lqr_ballistic_pos(end,:,:);
-xf_smc_ballistic = interp_step_smc_ballistic_pos(end,:,:);
-xf_discrete_smc_ballistic = interp_step_discrete_smc_ballistic_pos(end,:,:);
-xf_pid_ballistic = interp_step_pid_ballistic_pos(end,:,:);
+% Settle toward the COMMANDED ballistic target (the apogee deploy XY at
+% ground, snapshotted as xf_ballistic_apogee right after the apogee deploy
+% seed), not each run's own final position. (Bugsweep
+% 2026-07-10 finding 16: referencing the run's own endpoint guarantees any
+% diverged run a finite, competitive-looking settling time -- the diverged
+% LQR apogee run scored within 3% of the converged controllers. Against the
+% fixed command, a run that never reaches the target keeps ts = NaN, which
+% the score heatmap renders blank -- the correct "did not settle".)
+xf_cmd_ballistic = reshape(xf_ballistic_apogee, [1 1 3]);
+xf_lqr_ballistic = xf_cmd_ballistic;
+xf_smc_ballistic = xf_cmd_ballistic;
+xf_discrete_smc_ballistic = xf_cmd_ballistic;
+xf_pid_ballistic = xf_cmd_ballistic;
 
 for i=1:size(interp_step_smc_ballistic_pos, 1)
     delta_lqr = vecnorm(interp_step_lqr_ballistic_pos(i,:,:) - xf_lqr_ballistic,2,3);
@@ -2359,6 +1875,18 @@ for i=1:size(interp_step_smc_ballistic_pos, 1)
         ts_xf_pid_ballistic = ballistic_time(i);
     end
 end
+% Reject a first-crossing settling time unless the run actually ENDS settled.
+% At loop exit each delta_* holds the final time sample's normalized worst-case
+% deviation, so this is the delta(end) <= 0.05 gate. (2026-07-12 audit C5: the
+% latch above fires on the FIRST entry into the 5% ball with no stay-within
+% test, so a run that dips in then diverges -- e.g. XY held while altitude runs
+% away -- would earn a finite, competitive settling time. A fully diverged run
+% cannot enter the ball at all, so the fig-38 headline is unaffected; this
+% closes the crash-through-with-XY-hold corner.)
+if delta_lqr > 0.05,          ts_xf_lqr_ballistic = NaN;          end
+if delta_smc > 0.05,          ts_xf_smc_ballistic = NaN;          end
+if delta_discrete_smc > 0.05, ts_xf_discrete_smc_ballistic = NaN; end
+if delta_pid > 0.05,          ts_xf_pid_ballistic = NaN;          end
 ts = [ts_xf_lqr_ballistic ts_xf_smc_ballistic ts_xf_discrete_smc_ballistic ts_xf_pid_ballistic];
 ts_score_ballistic = zeros(4,4);
 for i=1:4
@@ -2422,145 +1950,51 @@ end
 figure
 conlabels = {'LQR', 'cSMC', 'dSMC', 'PID'};
 subplot(3,1,1)
-h1 = heatmap(conlabels, conlabels, ts_score, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
+h1 = heatmap(conlabels, conlabels, ts_score, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times');
 title("Relative % 95% settling time, step impulse")
 h1.CellLabelFormat = '%.1f %%'; 
 clim([-50 50])
 
 subplot(3,1,2)
-h2 = heatmap(conlabels, conlabels, ts_score_uncertainty, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
+h2 = heatmap(conlabels, conlabels, ts_score_uncertainty, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times');
 title("Relative % 95% settling time, step impulse with uncertainty")
 h2.CellLabelFormat = '%.1f %%'; 
 clim([-50 50])
 
 subplot(3,1,3)
-h3 = heatmap(conlabels, conlabels, ts_score_ballistic, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times')
+h3 = heatmap(conlabels, conlabels, ts_score_ballistic, "Colormap", jet, 'FontSize', 16, 'FontName', 'Times');
 title("Relative % 95% settling time, ballistic")
 h3.CellLabelFormat = '%.1f %%'; 
 clim([-50 50])
 export_figure("figs/38_settling_time_scores")
 
-%%
+%% Ballistic envelope (fig 39)
 figure
-ax(1) = subplot(2,3,1)
-axis equal
-title("LQR")
-grid on
-hold on
-plot3(ballistic_solution.trajectory(1:end,10),ballistic_solution.trajectory(1:end,11),ballistic_solution.trajectory(1:end,12), '-b', 'LineWidth',2)
-for i=1:size(test_points,2)
-    idx = test_points(i);
-
-    deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
-    x0 = deploy_point(10:12);
-    
-    if ismember(idx, ballistic_envelope_lqr)
-        plot3(x0(1), x0(2), x0(3), 'og', 'MarkerFaceColor', 'green')
-    else
-        plot3(x0(1), x0(2), x0(3), 'or', 'MarkerFaceColor', 'red')
+env_titles = ["LQR", "PID", "cSMC", "dSMC (no control constraints)", "dSMC (saturated control effort)"];
+env_masks = {envelope_lqr_mask, envelope_pid_mask, envelope_smc_mask, envelope_dsmc_nosat_mask, envelope_dsmc_sat_mask};
+for k = 1:5
+    ax(k) = subplot(2,3,k);
+    axis equal
+    title(env_titles(k))
+    grid on
+    hold on
+    plot3(ballistic_solution.trajectory(1:end,10),ballistic_solution.trajectory(1:end,11),ballistic_solution.trajectory(1:end,12), '-b', 'LineWidth',2)
+    for i = 1:n_test
+        idx = test_points(i);
+        deploy_point = ballistic_solution.trajectory(idx, :).';
+        x0 = deploy_point(10:12);
+        if env_masks{k}(i)
+            plot3(x0(1), x0(2), x0(3), 'og', 'MarkerFaceColor', 'green')
+        else
+            plot3(x0(1), x0(2), x0(3), 'or', 'MarkerFaceColor', 'red')
+        end
     end
+    view(3)
+    xticks(0:400:800)
+    yticks(-400:400:0)
+    zticks(0:400:400)
 end
-view(3)
-xticks(0:400:800)
-yticks(-400:400:0)
-zticks(0:400:400)
-
-ax(2) = subplot(2,3,2)
-axis equal
-title("PID")
-grid on
-hold on
-plot3(ballistic_solution.trajectory(1:end,10),ballistic_solution.trajectory(1:end,11),ballistic_solution.trajectory(1:end,12), '-b', 'LineWidth',2)
-for i=1:size(test_points,2)
-    idx = test_points(i);
-
-    deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
-    x0 = deploy_point(10:12);
-    
-    if ismember(idx, ballistic_envelope_pid)
-        plot3(x0(1), x0(2), x0(3), 'og', 'MarkerFaceColor', 'green')
-    else
-        plot3(x0(1), x0(2), x0(3), 'or', 'MarkerFaceColor', 'red')
-    end
-end
-view(3)
-xticks(0:400:800)
-yticks(-400:400:0)
-zticks(0:400:400)
-
-ax(3) = subplot(2,3,3)
-axis equal
-title("cSMC")
-grid on
-hold on
-plot3(ballistic_solution.trajectory(1:end,10),ballistic_solution.trajectory(1:end,11),ballistic_solution.trajectory(1:end,12), '-b', 'LineWidth',2)
-for i=1:size(test_points,2)
-    idx = test_points(i);
-
-    deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
-    x0 = deploy_point(10:12);
-    
-    if ismember(idx, ballistic_envelope_smc)
-        plot3(x0(1), x0(2), x0(3), 'og', 'MarkerFaceColor', 'green')
-    else
-        plot3(x0(1), x0(2), x0(3), 'or', 'MarkerFaceColor', 'red')
-    end
-end
-view(3)
-xticks(0:400:800)
-yticks(-400:400:0)
-zticks(0:400:400)
-
-ax(4) = subplot(2,3,4)
-axis equal
-title("dSMC (no control constraints)")
-grid on
-hold on
-plot3(ballistic_solution.trajectory(1:end,10),ballistic_solution.trajectory(1:end,11),ballistic_solution.trajectory(1:end,12), '-b', 'LineWidth',2)
-for i=1:size(test_points,2)
-    idx = test_points(i);
-
-    deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
-    x0 = deploy_point(10:12);
-
-    if ismember(idx, ballistic_envelope_dsmc_nosat)
-        plot3(x0(1), x0(2), x0(3), 'og', 'MarkerFaceColor', 'green')
-    else
-        plot3(x0(1), x0(2), x0(3), 'or', 'MarkerFaceColor', 'red')
-    end
-end
-view(3)
-xticks(0:400:800)
-yticks(-400:400:0)
-zticks(0:400:400)
-
-ax(5) = subplot(2,3,5)
-axis equal
-title("dSMC (saturated control effort)")
-grid on
-hold on
-plot3(ballistic_solution.trajectory(1:end,10),ballistic_solution.trajectory(1:end,11),ballistic_solution.trajectory(1:end,12), '-b', 'LineWidth',2)
-for i=1:size(test_points,2)
-    idx = test_points(i);
-
-    deploy_point = ballistic_solution.trajectory(idx, :).';
-    rot0 = deg2rad(deploy_point(13:15));
-    x0 = deploy_point(10:12);
-
-    if ismember(idx, ballistic_envelope_dsmc_sat)
-        plot3(x0(1), x0(2), x0(3), 'og', 'MarkerFaceColor', 'green')
-    else
-        plot3(x0(1), x0(2), x0(3), 'or', 'MarkerFaceColor', 'red')
-    end
-end
-view(3)
-xticks(0:400:800)
-yticks(-400:400:0)
-zticks(0:400:400)
+clear env_titles env_masks  % analysis_log.mat is a whole-workspace save; keep its variable set lean
 
 % Spread bottom row across full figure width: center ax(4) between top cols 1-2
 % and ax(5) between top cols 2-3 so their long titles no longer overlap.
@@ -2579,5 +2013,29 @@ sgtitle("Ballistic trajectory stabilization envelopes", 'FontSize', 20, 'FontWei
 
 export_figure("figs/39_ballistic_envelope", Width=3000, Height=1200)
 
-%%
+%% Cache workspace (load to skip re-simulating)
 save("logs/analysis_log.mat")
+
+%% Local functions (must stay at end of file)
+function [dmin, davg, dmax] = pairwise_distance_stats(interp_pos)
+% Min/avg/max over time of pairwise swarm-member distances. interp_pos is
+% [T x 10 x 3] interpolated posout; row i / col j of each output = the stat
+% over t of ||pos_i(t) - pos_j(t)||. Body kept verbatim from the original
+% per-case blocks (2026-07-12 dedup of 16 copies).
+dmin = [];
+davg = [];
+dmax = [];
+for i=1:10
+    temp = repmat(interp_pos(:, i, :), [1, 10, 1]);
+    temp_pos = abs(interp_pos - temp);
+    temp = sqrt(sum(temp_pos.^2, 3));
+    min_distance = min(temp, [], 1);
+    max_distance = max(temp, [], 1);
+
+    dmin = [dmin; min_distance];
+    dmax = [dmax; max_distance];
+
+    avg_distance = mean(temp, 1);
+    davg = [davg; avg_distance];
+end
+end

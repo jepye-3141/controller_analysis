@@ -9,7 +9,13 @@ p_target = [600; 0; 0];   % target landing centroid (m)
 lambda   = 50;            % weight on half_radius (m); J = ||c - p_t||^2 - lambda*half_r
 verify   = true;          % run one ground-truth sweep at the surrogate optimum (~16 min)
 
-%% Load LHS training data (output of centroid_lookup_table.m)
+%% Load LHS training data (canonical log regenerated 2026-07-11 by j3_lut_regen.m, N=41)
+% WARNING -- do NOT re-run this script as-is. The canonical
+% logs/surrogate_optimize_log.mat is the PROMOTED area_proxy refit
+% (re-promoted 2026-07-11 on the retuned N=41 LUT, plan J3); this script's clamp-mode fit would overwrite it and
+% regress the promotion (it also overwrites figs/SO_01). Use
+% j3_surrogate_refit.m for fitting, replot_SO_01.m to re-render SO_01, or
+% port the area_proxy y_hr block + J here first (plan J3 delta W1.1).
 load("logs/centroid_lookup_log.mat")   % lookup, ranges, N, X, field_names
 
 %% Build training matrix in normalised [0,1]^d coordinates
@@ -27,16 +33,14 @@ y_hr    = [lookup.half_radius].';
 assert(all(isfinite(y_cx)) && all(isfinite(y_cy)) && all(isfinite(y_reach)), ...
     'surrogate_optimize: lookup table contains non-finite cx/cy/reach values; LHS sweep produced degenerate trials');
 
-% NaN half_radius = high-reach case where radial profile never decayed below
-% 0.5*peak inside the sweep grid. Clamp above the max observed finite value
-% so the surrogate sees those samples as "at least this wide".
+% NaN half_radius = radial profile never decayed below 0.5*peak inside the grid;
+% clamp above the max finite value so the surrogate reads "at least this wide".
 hr_max = max(y_hr, [], 'omitnan');
 assert(~isnan(hr_max), 'surrogate_optimize: all half_radius samples are NaN; lookup table degenerate');
 y_hr(isnan(y_hr)) = 1.2 * hr_max;
 
 %% Fit GP surrogates
-% Statistics & Machine Learning Toolbox. ARD Matern-5/2 + per-output
-% standardisation; marginal-likelihood hyperparameter fitting.
+% fitrgp (Stats & ML Toolbox); hyperparameters by marginal likelihood.
 % Sacks et al., Statistical Science 4(4), 1989; Rasmussen & Williams 2006.
 gp_opts = {'KernelFunction', 'ardmatern52', ...
            'Standardize', true, ...
@@ -48,6 +52,7 @@ gp_hr    = fitrgp(Xn, y_hr,    gp_opts{:});
 
 %% Multi-start surrogate optimisation (fmincon-SQP on the GP mean)
 % Marler & Arora, SMO 26, 2004 (scalarised multi-objective).
+% Only (cx,cy) and half_radius enter J: gp_reach is fit/reported but unused; p_target(3) ignored.
 J_obj = @(t) (predict(gp_cx, t) - p_target(1))^2 + ...
              (predict(gp_cy, t) - p_target(2))^2 - ...
              lambda * predict(gp_hr, t);
@@ -131,6 +136,7 @@ title(tl, sprintf('Surrogate J slices, p_{target} = (%g, %g) m, \\lambda = %g', 
 export_figure("figs/SO_01_predicted_J_slices")
 
 %% Save log
+% WARNING: overwrites the promoted area_proxy canonical log -- see header note.
 save("logs/surrogate_optimize_log.mat", ...
      "gp_cx", "gp_cy", "gp_reach", "gp_hr", ...
      "theta_best", "theta_phys", "J_best", ...

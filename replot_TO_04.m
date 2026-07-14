@@ -1,5 +1,6 @@
 % Reload trajectory_optimization workspace and re-render only TO_04.
 % Used for visualization tweaks without re-running the dSMC sweep.
+% Source log is pre-criterion (May 2026): reproduces the historical figure; the current paper figure is TO_04_sat_on.
 clear; clc; close all;
 load('logs/trajectory_optimization_log.mat');
 
@@ -29,6 +30,7 @@ for i = 1:n_deploy
 end
 landing_ratio = landing_success ./ max(landing_total, 1);
 
+% first_reach_deploy(tgt,k): earliest deploy index to reach each landing point (drawn bold below).
 first_reach_deploy = nan(n_deploy, n_ct);
 for tgt = 1:n_deploy
     for k = 1:n_ct
@@ -93,6 +95,7 @@ land_y_flat = reshape(land_pos(2,:,:), [], 1);
 land_z_flat = reshape(land_pos(3,:,:), [], 1);
 ratio_flat  = landing_ratio(:);
 
+% Magenta band below the ryg ramp marks ratio == 0 (no deploy reached that point); zeros remap into the band.
 n_ryg     = size(cmap_ryg, 1);
 n_band    = 4;
 zero_band = repmat([1 0 1], n_band, 1);

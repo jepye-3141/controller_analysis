@@ -1,10 +1,15 @@
 % Reload surrogate_optimize workspace and re-render SO_01 with current style.
 % Used after style-helper updates without re-fitting the GPs or re-running
 % the ground-truth verification sweep.
+% Source log is the promoted area_proxy refit (re-promoted 2026-07-11 on the
+% retuned N=41 LUT, plan J3): current criterion + fixed ballistics, gp_hr/y_hr
+% are the area_proxy target (integrated reachability), not half_radius meters.
 clear; clc; close all;
 load('logs/surrogate_optimize_log.mat');
 % Provides: gp_cx, gp_cy, gp_reach, gp_hr, theta_best, theta_phys, J_best,
-%           p_target, lambda, ranges, field_names, Xn, y_cx, y_cy, y_reach, y_hr
+%           p_target, lambda, ranges, field_names, Xn, y_cx, y_cy, y_reach,
+%           y_hr, plus refit extras (lambdas, lam_results, loo, ok_centroid,
+%           hr_mode, out_v, promotion_note)
 
 set_default_fonts();
 

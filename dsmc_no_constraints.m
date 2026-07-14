@@ -1,4 +1,8 @@
 function u = dsmc_no_constraints(A, B, state, xd, x0, constants) %#ok<INUSL>
+% Original discrete SMC, lifted verbatim from the Simulink block; mathematical
+% structure frozen -- canonical baseline. Deliberately UNCLIPPED (the only
+% truly-unconstrained code path); dsmc_constraints.m delegates here when
+% constants.unconstrained is true.
 persistent xk;
 persistent xkp1;
 persistent xk_d;

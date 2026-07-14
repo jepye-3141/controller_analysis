@@ -56,7 +56,7 @@ function dx  = state(t, x, w, ks)
     Mz = w(ks, 4);
 
     
-    % Step 3: Calculate derivatives
+    % Nonlinear quadrotor EOM; dx(13) integrates u*u.' (the control-effort objective)
     dx(1)         = -vz*wy + vy*wz - g*sin(theta);
     dx(2)         = -vx*wz + vz*wx + g*cos(theta)*sin(phi);
     dx(3)         = -vy*wx + vx*wy + g*cos(theta)*cos(phi) - T/m;
@@ -150,7 +150,6 @@ function dx = state_dot(x, u)
     Mz = u(4);
 
     
-    % Step 3: Calculate derivatives
     dx(1)         = -vz*wy + vy*wz - g*sin(theta);
     dx(2)         = -vx*wz + vz*wx + g*cos(theta)*sin(phi);
     dx(3)         = -vy*wx + vx*wy + g*cos(theta)*cos(phi) - T/m;
@@ -218,12 +217,12 @@ end
 
 N           = 100;           % number of nodes => (N-1) subintervals
 M           = 5;            % number of points per subinterval
-T           = 10;            % final time
+T           = 10;            % final time (s)
 Nx     = 12;            % number of states
 Nu   = 4;            % number of controls
 x0          = zeros(1,12);       % initial states
 xf          = [zeros(1,9) 2 4 10];      % final states
-% Store parameters for the use of constraint and objective function
+% Pack shared parameters for cf/objfun
 opts.N         = N;         
 opts.M           = M;          
 opts.T           = T;          
@@ -264,7 +263,7 @@ cf(y0, opts)
 objfun(y0, opts)
 
 options = optimoptions('fmincon','Display','Iter','Algorithm','interior-point',...
-    'MaxFunEvals',Inf,'ConstraintTolerance',1e-3,'OptimalityTolerance',1e-7); % interior-point
+    'MaxFunEvals',Inf,'ConstraintTolerance',1e-3,'OptimalityTolerance',1e-7);
 
 tic
 [yopt,f] = fmincon(@(y) objfun(y, opts),y0,[],[],[],[],yL,yU,...
@@ -284,7 +283,6 @@ title('Control values')
 xlabel('time (s)');
 ylabel('u');
 
-% plot states
 figure()
 plot(linspace(0, T, N), x(:,10))
 hold on
@@ -294,7 +292,7 @@ title('States')
 xlabel('time (s)');
 ylabel('states')
 
-%% RRT* with MATLAB - Sort of working
+%% RRT* with MATLAB - Sort of working (actually min-snap + differential flatness; no RRT* search)
 clc
 startPose = [0; 0; 0; 0; 0; 0; 0];  % [x y z qw qx qy qz]
 goalPose = [2; 4; 10; 0; 0; 0; 0];
@@ -400,7 +398,7 @@ for i = 1:size(q,2)
 end
 fprintf("\n")
 
-% Check whether this is a valid control schema
+% Sanity check: replay the recovered controls open-loop through the nonlinear EOM
 z0 = zeros(12, 1);
 state_eval = [];
 t = [];
@@ -414,8 +412,7 @@ end
 state_eval
 
 %% Sampling-based controls planning
-% 1: Define a discrete set of possible control inputs by first looking at
-%       the range of moments commanded previously as a starting point.
+% 1: Discretize the control set around the range spanned by the flatness controls (us)
 clc
 g = 9.81;
 m = 0.8;
@@ -434,13 +431,13 @@ Mx_disc = linspace(min_moment - dM/2, max_moment + dM/2, steps);
 My_disc = linspace(min_moment - dM/2, max_moment + dM/2, steps);
 Mz_disc = linspace(min_moment - dM/2, max_moment + dM/2, steps);
 
-% Append steady state efforts
+% Append hover effort (T = mg, zero moments)
 T_disc = [T_disc g*m];
 Mx_disc = [Mx_disc 0];
 My_disc = [My_disc 0];
 Mz_disc = [Mz_disc 0];
 
-% And then create the combinations of control actions
+% Enumerate all control combinations
 U = [];
 for a=1:steps+1
     for b=1:steps+1
@@ -453,21 +450,19 @@ for a=1:steps+1
     end
 end
 
-% 2: Define initial and goal states
-% 
+% 2: Initial and goal states
 x0 = [0; 0; 0; 0; 0;  0];
 xf = [0; 0; 0; 2; 4; 10];
 
-% 3: Loop through a random tree between x0 and xf. 
+% 3: Random-tree loop between x0 and xf (not implemented):
 % i. Pick a random state in the operational area
-% ii. Find the closest node as defined by total state difference
-% iii. Propagate forward from the near node to the new node, using diff.
-%        flatness
+% ii. Find the closest node by total state difference
+% iii. Propagate from the near node to the new node via differential flatness
 % iv. Check the final and intermediate nodes for goal reaching
 % v. If goal not reached, pick another random node and repeat.
 
-%%
-% Step 2: Linearize about each point
+%% Time-varying LQR along the reference (needs C and inertias from constants.m)
+% Step 2: Linearize about each state_eval sample
 syms vx vy vz wx wy wz theta phi psi x y z T Mx My Mz
 xdot = [-vz*wy + vy*wz - g*sin(theta);
         -vx*wz + vz*wx + g*cos(theta)*sin(phi);
@@ -500,7 +495,7 @@ for i = 1:length(state_eval)
     Bjac_mat = cat(3, Bjac_mat, Bjac_eval);
 end
 
-% Step 3: LQR DARE at each step
+% Step 3: LQR DARE at each sample (lqrd @ 50 Hz)
 Ki_d_mat = [];
 Kp_d_mat = [];
 for i = 1:length(state_eval)

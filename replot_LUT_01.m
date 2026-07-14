@@ -1,7 +1,10 @@
 % Reload centroid_lookup workspace and re-render LUT_01 with current style.
-% Used after style-helper updates without re-running the 5-hour LHS sweep.
+% Used after style-helper updates without re-running the LHS sweep.
+% Source log is the 2026-07-11 j3_lut_regen output (N=41; post-bugsweep
+% physics + retuned launch Vo=94/el=64, el box [35,70]; row 41 is the
+% re-simulated reference operating point, flagged is_reference).
 clear; clc; close all;
-load('logs/centroid_lookup_log.mat');   % lookup, ranges, N
+load('logs/centroid_lookup_log.mat');   % lookup, ranges, X, N, field_names
 
 set_default_fonts();
 
