@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.1)  13 JUL 2026 12:21
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.1)  15 JUL 2026 12:24
 entering extended mode
  \write18 enabled.
  %&-line parsing enabled.
@@ -1435,16 +1435,17 @@ verted-to.pdf>
 (epstopdf)                    size: 36277 bytes
 (epstopdf)             Command: <epstopdf --outfile=figs/TO_04_landing_envelope
 _sat_on-eps-converted-to.pdf figs/TO_04_landing_envelope_sat_on.eps>
-(epstopdf)             \includegraphics on input line 1481.
+(epstopdf)             \includegraphics on input line 1482.
 Package epstopdf Info: Output file is already uptodate.
-<figs/TO_04_landing_envelope_sat_on-eps-converted-to.pdf, id=547, 2007.5pt x 14
+<figs/TO_04_landing_envelope_sat_on-eps-converted-to.pdf, id=551, 2007.5pt x 14
 05.25pt>
 File: figs/TO_04_landing_envelope_sat_on-eps-converted-to.pdf Graphic file (typ
 e pdf)
 <use figs/TO_04_landing_envelope_sat_on-eps-converted-to.pdf>
 Package pdftex.def Info: figs/TO_04_landing_envelope_sat_on-eps-converted-to.pd
-f  used on input line 1481.
+f  used on input line 1482.
 (pdftex.def)             Requested size: 375.80544pt x 263.05489pt.
+ [22]
 Package epstopdf Info: Source file: <figs/TO_06_control_norm_sat_on.eps>
 (epstopdf)                    date: 2026-07-11 10:43:18
 (epstopdf)                    size: 70309 bytes
@@ -1454,17 +1455,16 @@ ed-to.pdf>
 (epstopdf)                    size: 42025 bytes
 (epstopdf)             Command: <epstopdf --outfile=figs/TO_06_control_norm_sat
 _on-eps-converted-to.pdf figs/TO_06_control_norm_sat_on.eps>
-(epstopdf)             \includegraphics on input line 1488.
+(epstopdf)             \includegraphics on input line 1489.
 Package epstopdf Info: Output file is already uptodate.
-<figs/TO_06_control_norm_sat_on-eps-converted-to.pdf, id=548, 2007.5pt x 1405.2
+<figs/TO_06_control_norm_sat_on-eps-converted-to.pdf, id=560, 2007.5pt x 1405.2
 5pt>
 File: figs/TO_06_control_norm_sat_on-eps-converted-to.pdf Graphic file (type pd
 f)
 <use figs/TO_06_control_norm_sat_on-eps-converted-to.pdf>
 Package pdftex.def Info: figs/TO_06_control_norm_sat_on-eps-converted-to.pdf  u
-sed on input line 1488.
+sed on input line 1489.
 (pdftex.def)             Requested size: 375.80544pt x 263.05489pt.
- [22 <./figs/TO_04_landing_envelope_sat_on-eps-converted-to.pdf>]
 Package epstopdf Info: Source file: <figs/TO_07_landing_heatmap_sat_on.eps>
 (epstopdf)                    date: 2026-07-11 10:43:18
 (epstopdf)                    size: 773840 bytes
@@ -1474,26 +1474,27 @@ erted-to.pdf>
 (epstopdf)                    size: 1994704 bytes
 (epstopdf)             Command: <epstopdf --outfile=figs/TO_07_landing_heatmap_
 sat_on-eps-converted-to.pdf figs/TO_07_landing_heatmap_sat_on.eps>
-(epstopdf)             \includegraphics on input line 1495.
+(epstopdf)             \includegraphics on input line 1496.
 Package epstopdf Info: Output file is already uptodate.
-<figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf, id=567, 2007.5pt x 140
+<figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf, id=561, 2007.5pt x 140
 5.25pt>
 File: figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf Graphic file (type
  pdf)
 <use figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf>
 Package pdftex.def Info: figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf
-  used on input line 1495.
+  used on input line 1496.
 (pdftex.def)             Requested size: 375.80544pt x 263.05489pt.
+ [23 <./figs/TO_04_landing_envelope_sat_on-eps-converted-to.pdf> <./figs/TO_06_
+control_norm_sat_on-eps-converted-to.pdf>]
 LaTeX Font Info:    Font shape `OT1/minntx/b/n' will be
-(Font)              scaled to size 8.0pt on input line 1508.
+(Font)              scaled to size 8.0pt on input line 1509.
 LaTeX Font Info:    Font shape `OT1/minntx/b/n' will be
-(Font)              scaled to size 6.0pt on input line 1508.
- [23 <./figs/TO_06_control_norm_sat_on-eps-converted-to.pdf> <./figs/TO_07_land
-ing_heatmap_sat_on-eps-converted-to.pdf>]
+(Font)              scaled to size 6.0pt on input line 1509.
+ [24 <./figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf>]
 (./root.bbl
 LaTeX Font Info:    Font shape `T1/ntxtlf/m/it' will be
 (Font)              scaled to size 9.0pt on input line 15.
- [24]) [25] (./root.aux)
+ [25]) [26] (./root.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2020/03/25>
@@ -1502,13 +1503,13 @@ Package rerunfilecheck Info: File `root.out' has not changed.
 (rerunfilecheck)             Checksum: 0955D940DE992EA1BD0FA5E517CC9433;5063.
  ) 
 Here is how much of TeX's memory you used:
- 21851 strings out of 469006
- 348980 string characters out of 5454814
- 812254 words of memory out of 5000000
+ 21852 strings out of 469006
+ 348987 string characters out of 5454814
+ 813409 words of memory out of 5000000
  49757 multiletter control sequences out of 15000+600000
  776982 words of font info for 354 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
- 89i,19n,131p,2108b,727s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 89i,19n,131p,2108b,741s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/NewTXMI.pfb
 ></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/NewTXMI5.pfb
 ></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/NewTXMI7.pfb
@@ -1523,10 +1524,10 @@ usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/txsys.pfb></usr
 /local/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/ztmb.pfb></usr/loc
 al/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/ztmr.pfb></usr/local/t
 exlive/2026basic/texmf-dist/fonts/type1/public/newtx/ztmri.pfb>
-Output written on root.pdf (25 pages, 2884732 bytes).
+Output written on root.pdf (26 pages, 2886803 bytes).
 PDF statistics:
- 734 PDF objects out of 1000 (max. 8388607)
- 624 compressed objects within 7 object streams
- 202 named destinations out of 1000 (max. 500000)
+ 743 PDF objects out of 1000 (max. 8388607)
+ 632 compressed objects within 7 object streams
+ 203 named destinations out of 1000 (max. 500000)
  55535 words of extra memory for PDF output out of 61914 (max. 10000000)
 
