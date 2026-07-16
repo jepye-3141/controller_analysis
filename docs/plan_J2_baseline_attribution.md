@@ -32,13 +32,13 @@ Implement a Faessler-2017-style **iterative prioritized mixer** (their Alg.: sat
 
 ### W3 — cSMC repair + verification pass
 1. Fix `Jzz→Jyy` in eq:smc3 and in the `uhat_My` line of the cSMC charts (`smc_controller.slx`, `zoh_smc_controller.slx` — confirm which one(s) `smc_swarm{,_single}.slx` reference before editing); reconcile the `sθ/cθ` and `uhat_T` sign discrepancies between root.tex eqs smc1/sdot-from-eom and the block (code is presumed ground truth per project convention — verify the code's own cancellation symbolically first).
-2. Run the cSMC section through the same sympy verification treatment as `saturation_verification_report.md` (small scope: 4 laws, 1 substitution chain).
+2. Run the cSMC section through the same sympy verification treatment the saturation sections received (2026-07-06 math-verification pass: independent symbolic re-derivation of every displayed identity, PASS/FAIL per identity, exact — no floating-point tolerance except where a numeric value is itself the claim). Small scope here: 4 laws, 1 substitution chain.
 3. Re-run cSMC results (envelope + any figures) — expect possible improvement in the cSMC arm; the comparison claim must rest on a *correct* baseline.
 4. Document the tuning protocol for all baselines in an appendix (what was tuned, on which case, what the ballistic case reuses). If LQR/PID were tuned only for tracking, say so and add one retuning attempt on STABILIZE to preempt "you didn't even try."
 
-### W4 — Terminal-fallback upgrade (F1's preferred remedy) + stage occupancy
+### W4 — Terminal-fallback upgrade (mid-band re-centering remedy) + stage occupancy
 1. Instrument the allocation cascade with per-tick stage counters (returned via a diagnostic output or persistent tally): how often stages 1/2/3/4 fire across the sweep. The stage-4 full-motor-cutoff story (root.tex, "the vehicle coasts unactuated") deserves data.
-2. Implement the mid-band re-centering variant flagged in `saturation_verification_report.md` F1 / `root_deconfliction_log.md` §5 (when the roll/pitch demand alone is infeasible, re-center collective inside the feasible band instead of cutting off). One sweep arm. If it helps, it strengthens the contribution; if not, the occupancy data justifies the simple fallback.
+2. Implement the **mid-band re-centering variant** of the stage-4 terminal fallback (banked remedy from the 2026-07-06 saturation math-verification finding F1 + the 2026-07-06 root deconfliction §5; deliberately kept out of the paper-truthing pass because it is a controller behavior change). **What it is:** the current stage-4 fallback returns `ū_k = (0, γ·Mx, γ·My, 0)` — but with `Ω²min = 0` the closed form admits only `γ = 0`, so all four motors are commanded off (full cutoff) and *no* roll/pitch authority is actually retained; the item-4 "guaranteed to find γ ∈ [0,1]" narrative is false, because `v_Mx + v_My = (1/2b)·(−My, −Mx, My, Mx)` has a strictly negative component for any `(Mx, My) ≠ 0`, and any `γ > 0` drives it below `Ω²min = 0`. The remedy re-centers collective inside the feasible band instead of zeroing it: take `base = ½(Ω²min + Ω²max)·1` (equivalently a fixed non-commanded collective `T_c = 2b(Ω²min + Ω²max)`), `dir = v_Mx + v_My`, `γ = λ_max(base, dir)`, and return `ū_k = (T_c, γ·Mx, γ·My, 0)`. Because base is now strictly interior (margin `½(Ω²max − Ω²min) > 0` to both bounds), `γ > 0` *strictly* for any `(Mx, My) ≠ 0` — a true guarantee; physically, differential moments need a nonzero common mode to differentiate about, so maximizing retained roll/pitch authority forces mid-band collective, sacrificing altitude *tracking* but preserving maximal attitude authority. The resulting thrust deficit `T − T_c` is already absorbed by the auxiliary state ξ. **Why deferred:** adopting it requires editing `priority_weighted_allocate()` and re-running the sweep, so root.tex currently *documents* the honest motor-cutoff fallback (matching `dsmc_constraints.m` stage 4) rather than changing behavior. One sweep arm here. If it helps, it strengthens the contribution; if not, the occupancy data justifies the simple fallback.
 
 ### W5 — Envelope + intro-promise closure
 1. Add the five-arm envelope success table (4/9/10/20/7 of 20) to the paper next to fig 39, with a sentence analyzing *why* the saturated arm loses envelope points (deploy-state energy vs authority — links to J1's T/W curve).
@@ -62,3 +62,13 @@ Ablation table + attribution paragraph (W1); competitor row + related-work sharp
 ## Decision points needing author input
 
 (a) Sign-off on the two new bus flags and the competitor mode living inside `dsmc_constraints.m` vs a separate file. (b) Whether the cSMC fix re-runs everything cSMC-touching or only the paper-cited results. (c) Import the settling/energy material vs trim the intro promise. (d) Adopt mid-band re-centering if it wins, or keep the documented cutoff.
+
+## Deferred reviewer/theory items (from 2026-07-10 journal-readiness audit G4)
+
+The post-deconfliction ISS development is genuinely strong (exact ν/γ, an envelope certificate for M_D). These baseline/theory-attribution-scoped reviewer pokes remain open and ride along with W1/W3:
+
+- **No robustness term for model mismatch.** The reaching identity `Δs = −E·s̃ + D·Δu` presumes exact equivalent-control inversion; the two-step-extrapolated model vs the true plant carries a mismatch the saturated analysis does not bound with a robustness/disturbance term.
+- **Clip/ISS interaction not carried through.** The ±2 `s_z`/`s_ψ` sliding-variable clip (canonical, load-bearing) is not threaded through the saturated ISS argument — its interaction with the certificate is left unanalyzed.
+- **Selection-biased M_D envelope.** The `M_D = sup_k |D_k| < ∞` envelope is checked empirically only on the successful-landing trials, so the supporting evidence is selection-biased.
+
+(The remaining G4 item — "saturation not permanent" assumed, with stage-4 = full motor cutoff and the mid-band re-centering remedy unimplemented — is handled in W4 above.)

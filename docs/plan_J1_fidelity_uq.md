@@ -2,7 +2,7 @@
 
 **Goal:** make the paper's central empirical claim (priority-weighted saturation handling restores ballistic-recovery reachability) survive a JGCD reviewer's two standard attacks: *"your plant is not a real vehicle"* and *"your result is one deterministic run."*
 **Status:** proposal — needs author sign-off before any model/code edit (workstreams W1–W3 change simulation behavior; all current results shift).
-**Companion docs:** `2026-07-10_journal_readiness_audit.md` (G1), `docs/archived/plan_B_cem_outer_loop.md` + `plan_D_cvar_covariance_steering.md` (banked stochastic machinery, relevant to W4 only if an optimization loop is later wanted).
+**Companion docs:** `docs/archived/plan_B_cem_outer_loop.md` + `plan_D_cvar_covariance_steering.md` (banked stochastic machinery, relevant to W4 only if an optimization loop is later wanted).
 
 ## Why this blocks acceptance
 
@@ -15,7 +15,7 @@
 
 ### W1 — Ground the actuator physically (prerequisite for honest saturation results)
 1. Pick a reference vehicle consistent with the 0.8 kg / l=0.2 m airframe (published thrust-stand data for a ~200-size class, or a tube-launched design point à la SQUID). Derive physical `b` (N per rad²/s²), `d`, `Ω²max`, hover fraction; document the mapping to the normalized units (one paragraph + one table in the paper).
-2. Replace the `Omega2_max` **source-file literal** (`dsmc_constraints.m:97-98`, mutated on disk by `set_omega2_max.m`) with a bus-carried parameter: add `Omega2_max` (and `Omega2_min`) to `constants_struct` in `constants.m`, read from `constants` in `dsmc_constraints.m`, update the parsim static-variable notes. Retires the regexprep hack (audit H6). **Regression gate:** at `Omega2_max=2` the sweep must reproduce 77/140 exactly (the STEP-12b no-op property gives a strong invariant).
+2. Replace the `Omega2_max` **source-file literal** (`dsmc_constraints.m:97-98`, mutated on disk by `set_omega2_max.m`) with a bus-carried parameter: add `Omega2_max` (and `Omega2_min`) to `constants_struct` in `constants.m`, read from `constants` in `dsmc_constraints.m`, update the parsim static-variable notes. Retires the regexprep hack (`docs/refactor_backlog.md` H6). **Regression gate:** at `Omega2_max=2` the sweep must reproduce 77/140 exactly (the STEP-12b no-op property gives a strong invariant).
 3. **T/W sensitivity curve** — the flagship new figure: sweep `Ω²max` over ~6–8 values spanning T/W ≈ 1.5–6, one `sweep_landing_centroid` arm each (warm ≈ 6 min ⇒ under 1.5 h total). Report reachability vs T/W for handler and clip arms. This converts "notional constant" into "characterized authority requirement," directly answering the abstract's claim that constraints for launched UAVs "can be severe."
 
 ### W2 — Minimal aero model + wind input
