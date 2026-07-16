@@ -163,8 +163,9 @@ u_Mz = Jzz * ((-apsi * dxk(6) + (K6/Jzz) * dxk(6)) + nupsi * tilde_spsik);
 % far from feasible, making a1, a2, a5, a6 numerically erratic and degrading
 % the slowly-varying-D assumption behind the ISS bound
 % (docs/scitech-paper/root.tex, frozen-D_k / D_{k+1} ~= D_k discussion in the
-% saturation Schur-stability and steady-state sections; see also
-% docs/saturation_verification_report.md, finding F5).
+% saturation Schur-stability and steady-state sections; the 2026-07-06
+% math-verification pass flagged this as a slowly-varying-D caveat, not a
+% defect).
 a1 =  6 * m / (u_T * cos(xk(6)));
 a2 =  2 * m / (u_T * cos(xk(6)));
 a5 = -6 * m / (u_T * cos(xk(4)) * cos(xk(6)));
@@ -305,7 +306,9 @@ function [Omega2_star, u_bar] = priority_weighted_allocate(u, Omega2_min, Omega2
     %   demanded (Mx, My) in the box: commanded T < 2*max(|Mx|,|My|) or
     %   max(|Mx|,|My|) > b*Omega2_max. Not measure-zero -- commanded T <= 0
     %   (e.g. arresting a climb during ballistic recovery) lands here for any
-    %   nonzero roll/pitch demand. See docs/paper_code_agreement_saturation.md F1.
+    %   nonzero roll/pitch demand. With Omega2_min=0 this yields gamma=0 (full
+    %   motor cutoff); the mid-band re-centering alternative is banked in
+    %   docs/plan_J2_baseline_attribution.md W4.
     gamma = max_feasible_scale_local(zeros(4,1), c_Mx + c_My, Omega2_min, Omega2_max);
     Om2 = gamma * (c_Mx + c_My);
     Omega2_star = max(Omega2_min, min(Om2, Omega2_max));
