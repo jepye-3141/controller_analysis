@@ -337,7 +337,7 @@ We formulate the standard four-loop cascaded PID controller, with outer and inne
 \normalsize
 
 \subsection{Continuous Sliding Mode Controller}
-The cSMC is a Lyapunov-stable controller that directly accounts for the system’s nonlinear dynamics. We follow the control laws of \cite{refs:Tahir2020} with one modification. Where \cite{refs:Tahir2020} uses a single PD layer to produce the desired Euler angles, we use two discrete PID layers: the first computes a desired translational acceleration, and the second resolves the corresponding attitude reference. This uses the cascaded structure used by most COTS flight controllers, and lets us tune the per-axis gains independently. The position PD control layer gains are listed in Table \ref{tab:smc-pid-gains}.
+The cSMC is a Lyapunov-stable controller that directly accounts for the system’s nonlinear dynamics. We follow the control laws of \cite{refs:Tahir2020} with one modification. Where \cite{refs:Tahir2020} uses a single PD layer to produce the desired Euler angles, we use two discrete PD layers: the first computes a desired translational acceleration, and the second resolves the corresponding attitude reference. This uses the cascaded structure used by most COTS flight controllers, and lets us tune the per-axis gains independently. The position PD control layer gains are listed in Table \ref{tab:smc-pid-gains}.
 \small
 \begin{table}[t]
 \centering
