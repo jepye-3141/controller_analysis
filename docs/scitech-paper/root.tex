@@ -380,7 +380,7 @@ e = r_{PID} - \begin{bmatrix} z \\ \phi \\ \theta \\ \psi \end{bmatrix}, \quad
 
 \begin{align}
 \hat{u}_T
-&= \frac{m\,c_T}{\cs\theta\,\cs\phi}\bigl(v_x\,\s\theta - v_y\,\s\theta\,\s\phi - v_z\,\cs\theta\,\cs\phi\bigr) \notag \\
+&= -\frac{m\,c_T}{\cs\theta\,\cs\phi}\bigl(v_x\,\s\theta - v_y\,\cs\theta\,\s\phi - v_z\,\cs\theta\,\cs\phi\bigr) \notag \\
 &\quad + m\bigl(-v_y\,\omega_x + v_x\,\omega_y + g\,\cs\theta\,\cs\phi\bigr)
 \label{eq:smc1} \\[4pt]
 \hat{u}_{M_x}
@@ -423,7 +423,7 @@ The goal is to show that if $s_\alpha$ stably converges to zero, the tracking er
 \begin{aligned}
 \dot s_T
 &= c_T\!\bigl(
-v_x \s\theta - v_y \s\theta \s\phi - v_z \cs\theta \cs\phi
+v_x \s\theta - v_y \cs\theta \s\phi - v_z \cs\theta \cs\phi
 \bigr) \\
 &\quad - \Bigl(
 -v_y \,\omega_x + v_x \,\omega_y + g \cs\theta \cs\phi - \tfrac{u_T}{m}
@@ -463,21 +463,21 @@ Substituting the control efforts from Equations \ref{eq:smc1}–\ref{eq:smc-cons
 \begin{aligned}
 \dot s_T
 &= c_T\!\bigl(
-v_x \s\theta - v_y \s\theta \s\phi - v_z \cs\theta \cs\phi
+v_x \s\theta - v_y \cs\theta \s\phi - v_z \cs\theta \cs\phi
 \bigr) \\
 &\quad - \biggl[
 \bigl(
 -v_y \,\omega_x + v_x \,\omega_y + g \cs\theta \cs\phi
 \bigr)
-+ \frac{1}{m} \biggl(
-\frac{m c_T}{\cs\theta \cs\phi} \bigl(
-v_x \s\theta - v_y \s\theta \s\phi - v_z \cs\theta \cs\phi
+- \frac{1}{m} \biggl(
+-\frac{m c_T}{\cs\theta \cs\phi} \bigl(
+v_x \s\theta - v_y \cs\theta \s\phi - v_z \cs\theta \cs\phi
 \bigr) \\
 &\qquad\quad
 + m \bigl(
 -v_y \,\omega_x + v_x \,\omega_y + g \cs\theta \cs\phi
 \bigr)
-+ \frac{\gamma_T m}{\cs\theta \cs\phi}\,
+- \frac{\gamma_T m}{\cs\theta \cs\phi}\,
 \sat(2s_T,-1,1)
 \biggr) \biggr] \cs\theta \cs\phi,
 \\[0.35em]
@@ -487,13 +487,13 @@ v_x \s\theta - v_y \s\theta \s\phi - v_z \cs\theta \cs\phi
 \bigr) \\
 &\quad - \frac{1}{J_{xx}} \biggl[
 \omega_y \omega_z (J_{zz} - J_{yy})
-+ \bigl(
+- \bigl(
 -c_{M_x} J_{xx} \bigl(
 \omega_x + \omega_y \s\phi \,\tn\theta + \omega_z \cs\phi \,\tn\theta
 \bigr) \\
 &\qquad\quad
  + \omega_y \omega_z (J_{zz} - J_{yy})
- + \gamma_{M_x} J_{xx}\, \sat(2s_{M_x},-1,1)
+ - \gamma_{M_x} J_{xx}\, \sat(2s_{M_x},-1,1)
 \bigr) \biggr],
 \\[0.35em]
 \dot s_{M_y}
@@ -502,13 +502,13 @@ v_x \s\theta - v_y \s\theta \s\phi - v_z \cs\theta \cs\phi
 \bigr) \\
 &\quad - \frac{\cs\phi}{J_{yy}} \biggl[
 \omega_x \omega_z (J_{xx} - J_{zz})
-+ \biggl(
+- \biggl(
 -\frac{c_{M_y} J_{yy}}{\cs\phi} \bigl(
 \omega_y \cs\phi - \omega_z \s\phi
 \bigr)
  + \omega_x \omega_z (J_{xx} - J_{zz}) \\
 &\qquad\quad
- + \frac{\gamma_{M_y} J_{yy}}{\cs\phi}\,
+ - \frac{\gamma_{M_y} J_{yy}}{\cs\phi}\,
 \sat(2s_{M_y},-1,1)
 \biggr) \biggr],
 \\[0.35em]
@@ -519,7 +519,7 @@ v_x \s\theta - v_y \s\theta \s\phi - v_z \cs\theta \cs\phi
 &\quad + \biggl(
 \frac{
 -c_{M_z} J_{zz} \bigl( \omega_y \tn\phi + \omega_z \bigr)
- + \dfrac{\gamma_{M_z} J_{zz} \cs\theta}{\cs\phi}\,
+ - \dfrac{\gamma_{M_z} J_{zz} \cs\theta}{\cs\phi}\,
 \sat(2s_{M_z},-1,1)
 }{J_{zz}}
 \biggr) \frac{\cs\phi}{\cs\theta}.
