@@ -79,7 +79,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-Highly unstable initial states, such as those produced by ballistic deployment, require nonlinear controllers to stabilize the tumble before the vehicle crashes. We derive and test two nonlinear controllers certified through Lyapunov stability analysis: a continuous-time Sliding Mode controller (cSMC) and a discrete-time Sliding Mode Control (dSMC). We test these against two off-the-shelf controllers: the Linear Quadratic Regulator with Integral Action (LQR) and the cascaded Proportional-Integral-Derivative (PID) controller. We find that the dSMC recovers more of the ballistic-deployment envelope than the LQR, PID, or continuous-time controllers, but that clipping the motor speeds to their physical limits reduces the recoverable set. We then extend the dSMC to account for possible motor control constraints in terms of maximum squared rotational speed. If the desired motor speeds fall within the physical bounds, then the augmented controller and the ideal controller are identical, and we satisfy the exponential reaching law. Otherwise, we saturate the control inputs in order of priority (first yaw, then altitude/thrust, then pitch/roll), and obtain weaker input-to-state stability (ISS). However, despite this weaker stability, this priority-weighted saturation increases average landing-site reachability roughly fourfold, from $7.9\%$ (per-motor clipping) to $32.9\%$ (saturation algorithm).
+Highly unstable initial states, such as those produced by ballistic deployment, require nonlinear controllers to stabilize the tumble before the vehicle crashes. We derive and test two nonlinear controllers certified through Lyapunov stability analysis: a continuous-time Sliding Mode controller (cSMC) and a discrete-time Sliding Mode Control (dSMC). We test these against two off-the-shelf controllers: the Linear Quadratic Regulator with Integral Action (LQR) and the cascaded Proportional-Integral-Derivative (PID) controller. We find that the dSMC recovers more of the ballistic-deployment envelope than the LQR, PID, or continuous-time controllers, but that naively clipping the motor speeds to their physical limits---with no intelligent saturation strategy---sharply reduces landing-site reachability. We then extend the dSMC to account for possible motor control constraints in terms of maximum squared rotational speed. If the desired motor speeds fall within the physical bounds, then the augmented controller and the ideal controller are identical, and we satisfy the exponential reaching law. Otherwise, we saturate the control inputs in order of priority (first yaw, then altitude/thrust, then pitch/roll), and obtain weaker input-to-state stability (ISS). However, despite this weaker stability, this priority-weighted saturation increases average landing-site reachability roughly fourfold, from $7.9\%$ (per-motor clipping) to $32.9\%$ (saturation algorithm).
 \end{abstract}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
@@ -387,7 +387,7 @@ e = r_{PID} - \begin{bmatrix} z \\ \phi \\ \theta \\ \psi \end{bmatrix}, \quad
 &= -c_{M_x}\, J_{xx}\bigl(\omega_x + \omega_y\,\s\phi\,\tn\theta + \omega_z\,\cs\phi\,\tn\theta\bigr) + \omega_y\,\omega_z\,(J_{zz} - J_{yy})
 \label{eq:smc2} \\[4pt]
 \hat{u}_{M_y}
-&= -\frac{c_{M_y}\, J_{zz}}{\cs\phi}\bigl(\omega_y\,\cs\phi - \omega_z\,\s\phi\bigr) + \omega_x\,\omega_z\,(J_{xx} - J_{zz})
+&= -\frac{c_{M_y}\, J_{yy}}{\cs\phi}\bigl(\omega_y\,\cs\phi - \omega_z\,\s\phi\bigr) + \omega_x\,\omega_z\,(J_{xx} - J_{zz})
 \label{eq:smc3} \\[4pt]
 \hat{u}_{M_z}
 &= -c_{M_z}\, J_{zz}\bigl(\omega_y\,\tn\phi + \omega_z\bigr)
@@ -503,7 +503,7 @@ v_x \s\theta - v_y \s\theta \s\phi - v_z \cs\theta \cs\phi
 &\quad - \frac{\cs\phi}{J_{yy}} \biggl[
 \omega_x \omega_z (J_{xx} - J_{zz})
 + \biggl(
--\frac{c_{M_y} J_{zz}}{\cs\phi} \bigl(
+-\frac{c_{M_y} J_{yy}}{\cs\phi} \bigl(
 \omega_y \cs\phi - \omega_z \s\phi
 \bigr)
  + \omega_x \omega_z (J_{xx} - J_{zz}) \\
