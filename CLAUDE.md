@@ -89,7 +89,7 @@ PID does **not** follow the `_swarm` suffix convention -- `analysis.m` loads fou
 
 - 10-drone swarm: `lqr_swarm.slx`, `smc_swarm.slx`, `discrete_smc_swarm.slx`, `pid_redux.slx`.
 - 1-drone ballistic-stabilization: `lqr_swarm_single.slx`, `smc_swarm_single.slx`, `discrete_smc_swarm_single.slx`, `pid_redux_single.slx`.
-- Controller-only blocks: `{lqr,smc,pid_redux}_controller.slx`, discrete variants `discrete_lqr_controller.slx`, `actual_discrete_smc_controller.slx`, `discrete_pid_redux_controller.slx`, and `zoh_smc_controller.slx`.
+- Controller-only blocks: `{lqr,pid_redux}_controller.slx`, discrete variants `discrete_lqr_controller.slx`, `actual_discrete_smc_controller.slx`, `discrete_pid_redux_controller.slx`, and `zoh_smc_controller.slx` -- the last is the cSMC block, referenced by `smc_swarm`/`smc_swarm_single` (the orphan `smc_controller.slx` was removed 2026-07-20; see the pass below).
 
 All swarm models consume workspace variables `xi` (**12-element** initial state, plant order `[vel_body(3); rotvel_body(3); theta; phi; psi; pos(3)]`), `xf`, `xf_ballistic`, `simcase`, per-group `A*/B*` when running uncertainty, and gains `Kp_d`/`Ki_d`. They output `posout` (Nx3xT), `velout` (Nx3xT), `cmdout` (3xT) as timeseries. The four `*_single` models also log `rotvelout` (leader Euler-angle rates; Data shape `[3x1xT]` in lqr/dsmc, `[Tx3]` in pid/smc).
 
@@ -146,3 +146,9 @@ The AIAA SciTech manuscript lives in `docs/scitech-paper/` -- edit only `root.te
 ## Citation audit (completed 2026-07-16)
 
 All 30 bib entries in `docs/scitech-paper/bibliography/aiaa_refs.bib` were checked against `root.tex`; every finding is resolved. In-source fixes applied: Tahir2020 PID->PD, Starks2024 wording, Sarpturk1987 attribution, Michelena2025/Liang2019 split cite, Shao2022, and the `claude` bib title. Xiong2016 was verified by the author; the Harper2025 Launched-Effects cite is kept by decision. The 11 uncited entries were purged, so the bib now holds 19 entries, all cited.
+
+## cSMC correctness + conference-readiness pass (2026-07-20)
+
+**cSMC code (`zoh_smc_controller.slx`, referenced by `smc_swarm`/`_single`):** two fixes -- pitch reaching-gain inertia `J_zz`->`J_yy`, and the sliding-variable saturation (was `min([s/beta 1]); max([s/beta -1])`, which divides by `beta` twice into an asymmetric `[-1,+2]` clamp) -> a single symmetric `max(min(s/beta,1),-1)`. Both behavior-neutral (cSMC stays 0/17; swarm cSMC figs 1..34 fold into the pending regen). An 8-file adversarial clamp sweep + spot-check found no other instance of the double-scaling bug elsewhere (the dSMC `[-2,2]` clip and the Omega^2 clips are correct). The orphan `smc_controller.slx` (same latent bugs, unreferenced) was deleted.
+
+**`root.tex` (paper-only, no number moves):** corrected `eq:smc1` + `eq:sdot_intermediate` so the cSMC reaching-law derivation reduces exactly to `-gamma_alpha sat` (verified in MATLAB Symbolic + an independent engine, adversarially); corrected the `eq:smc-defs` sliding-surface c-values `[0.5,4,8,0.5]`->`[6,10,10,0.5]` to match the sim; and a conference-readiness pass scoped the abstract stability claims, separated the two denominators (17-pt envelope vs 140-trial sweep, unchanged 8/17 and 7.9->32.9%), added the frozen-`D` slew bound, pinned the symmetric-quadrotor assumption to its yaw use (`omega_z = M_z/J_zz` drops the `(J_xx-J_yy)` cross-term), and tempered the Conclusion. Committed to `journal-dev`/`conference-dev`; the code + paper fixes cherry-picked to `release` (its own targeting-module file set preserved -- do NOT sync `release`<->`conference-dev` wholesale). See memory `project_csmc_law_audit_2026-07-20`.
