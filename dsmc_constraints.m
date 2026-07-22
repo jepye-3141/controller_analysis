@@ -68,18 +68,18 @@ K1 = 0.0001;  K2 = 0.0001;  K3 = 0.0001;
 K4 = 0.0012;  K5 = 0.0012;  K6 = 0.0012;
 
 % Reaching-law gains (Table IV)
-nuz   = 7;
-nupsi = 7;
-nu3   = 14;
-nu4   = 14;
+nuz   = 7.3044;
+nupsi = 8.2874;
+nu3   = 4.9968;
+nu4   = 4.9968;
 
 % Sliding-surface coefficients (eq 32, constant-valued ones)
-az   = 6;
-apsi = 1;
-a3   = 2;
-a4   = 8;
-a7   = 2;
-a8   = 8;
+az   = 10.4815;
+apsi = 3.1535;
+a3   = 3.4330;
+a4   = 14.6286;
+a7   = 3.4330;
+a8   = 14.6286;
 
 % Mixing matrix coefficients (Omega^2 -> u)
 b = 5;   % thrust coefficient
@@ -102,7 +102,7 @@ Omega2_max = 2;
 
 % Matched contraction rate k_xi(alpha) = eta_alpha * dt per channel (Plan A+
 % §4.4); ordering follows xi: [thrust/z; roll/Mx; pitch/My; yaw/Mz].
-k_xi = [nuz * dt; nu3 * dt; nu4 * dt; nupsi * dt];
+k_xi = 1.2741 * [nuz * dt; nu3 * dt; nu4 * dt; nupsi * dt];
 
 %% Mixing matrix (Omega^2 -> u)
 TM = [b   b   b   b;
@@ -134,8 +134,8 @@ spsik = apsi * (xk_d(6) - xk(6)) + (dxk_d(6) - dxk(6));
 % deploy point -- even at the historical 200 Hz rate (dt=1/200; the working
 % rate is constants.dt = 1/50). Transient growth of s_z, s_psi before xi
 % converges still needs the clip.
-szk   = min(szk,   2);  szk   = max(szk,   -2);
-spsik = min(spsik, 2);  spsik = max(spsik, -2);
+szk   = min(szk,   1.5780);  szk   = max(szk,   -1.5780);
+spsik = min(spsik, 1.5780);  spsik = max(spsik, -1.5780);
 
 %% STEP 2: D-matrix entries (state-only rows)
 % Plan A+ §4.1, with corrected sign (D = -A = +dt*[...] overall).
@@ -166,10 +166,10 @@ u_Mz = Jzz * ((-apsi * dxk(6) + (K6/Jzz) * dxk(6)) + nupsi * tilde_spsik);
 % saturation Schur-stability and steady-state sections; the 2026-07-06
 % math-verification pass flagged this as a slowly-varying-D caveat, not a
 % defect).
-a1 =  6 * m / (u_T * cos(xk(6)));
-a2 =  2 * m / (u_T * cos(xk(6)));
-a5 = -6 * m / (u_T * cos(xk(4)) * cos(xk(6)));
-a6 = -2 * m / (u_T * cos(xk(4)) * cos(xk(6)));
+a1 =  5.1762 * m / (u_T * cos(xk(6)));
+a2 =  0.7410 * m / (u_T * cos(xk(6)));
+a5 = -5.1762 * m / (u_T * cos(xk(4)) * cos(xk(6)));
+a6 = -0.7410 * m / (u_T * cos(xk(4)) * cos(xk(6)));
 
 %% STEP 6: D-matrix entries (underactuated rows)
 % Plan A+ §4.1; positive overall sign per corrected convention.
