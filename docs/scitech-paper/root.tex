@@ -79,7 +79,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-Highly unstable initial states, such as those produced by ballistic deployment, require nonlinear controllers to stabilize the tumble before the vehicle crashes. We derive and test two nonlinear controllers for which we establish Lyapunov-based stability conditions: a continuous-time Sliding Mode Controller (cSMC) and a discrete-time Sliding Mode Controller (dSMC). These conditions govern the four actuated channels (altitude, roll, pitch, and yaw); the cSMC guarantee is continuous-time and does not survive discretization, whereas the dSMC is built directly in discrete time and holds under the discretized plant. We test these against two off-the-shelf controllers: the Linear Quadratic Regulator with Integral Action (LQR) and the cascaded Proportional-Integral-Derivative (PID) controller. Sampling 17 deployment states along one ballistic trajectory, we find the dSMC recovers more of them than the LQR, PID, or continuous-time controllers. We then extend the dSMC to account for possible motor control constraints in terms of maximum squared rotational speed. If the desired motor speeds fall within the physical bounds, then the augmented controller and the ideal controller are identical, and we satisfy the exponential reaching law. Otherwise, we saturate the control inputs in order of increasing importance---yaw (least important) first, then altitude/thrust, then pitch/roll (most important)---and obtain a weaker input-to-state stability (ISS) bound that holds while the trajectory stays within an explicit envelope. However, despite this weaker stability, on a separate 140-trial landing sweep the priority-weighted saturation raises average landing-site reachability roughly $2.7\times$ over naive per-motor clipping, from $22.1\%$ to $60.7\%$.
+Highly unstable initial states, such as those produced by ballistic deployment, require nonlinear controllers to stabilize the tumble before the vehicle crashes. We derive and test two nonlinear controllers for which we establish Lyapunov-based stability conditions: a continuous-time Sliding Mode Controller (cSMC) and a discrete-time Sliding Mode Controller (dSMC). These conditions govern the four actuated channels (altitude, roll, pitch, and yaw); the cSMC guarantee is continuous-time and does not survive discretization, whereas the dSMC is built directly in discrete time and holds under the discretized plant. We test these against two off-the-shelf controllers: the Linear Quadratic Regulator with Integral Action (LQR) and the cascaded Proportional-Integral-Derivative (PID) controller. Sampling 17 deployment states along one ballistic trajectory, we find the dSMC recovers more of them than the LQR, PID, or continuous-time controllers. We then extend the dSMC to account for possible motor control constraints in terms of maximum squared rotational speed. If the desired motor speeds fall within the physical bounds, then the augmented controller and the ideal controller are identical, and we satisfy the exponential reaching law. Otherwise, we saturate the control inputs in order of increasing importance---yaw first, then altitude/thrust, then pitch/roll---and obtain a weaker input-to-state stability (ISS) bound that holds while the trajectory stays within an explicit envelope. However, despite this weaker stability, on a separate 140-trial landing sweep the priority-weighted saturation raises average landing-site reachability roughly $2.7\times$ over naive per-motor clipping, from $22.1\%$ to $60.7\%$.
 \end{abstract}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
@@ -843,24 +843,24 @@ We simulate a six degrees of freedom (6-DOF) ballistic trajectory using the equa
 \toprule
 \textbf{Symbol} & \textbf{Description} & \textbf{Value} & \textbf{Unit} \\
 \midrule
-\multicolumn{4}{l}{\emph{Launch kinematics}} \\
+\multicolumn{4}{l}{\textbf{Launch kinematics}} \\
 $V_0$         & Muzzle velocity                                & $94$   & m/s   \\
 $\theta_e$    & Launch elevation angle                         & $64$   & deg   \\
 $\theta_a$    & Launch azimuth angle                           & $15$   & deg   \\
 \midrule
-\multicolumn{4}{l}{\emph{Initial angular state}} \\
+\multicolumn{4}{l}{\textbf{Initial angular state}} \\
 $p_0$         & Initial axial (roll) spin rate                 & $-8.379$ & rad/s \\
 $\omega_{y,0}$& Initial transverse angular rate (yaw axis)     & $0.5$  & rad/s \\
 $\omega_{z,0}$& Initial transverse angular rate (pitch axis)   & $1$    & rad/s \\
 $\alpha_0$    & Initial angle of attack (pitch misalignment)   & $2$    & deg   \\
 $\beta_0$     & Initial sideslip angle (yaw misalignment)      & $-0.5$ & deg   \\
 \midrule
-\multicolumn{4}{l}{\emph{Initial position (range, altitude, cross-range)}} \\
+\multicolumn{4}{l}{\textbf{Initial position (range, altitude, cross-range)}} \\
 $x_0$         & Range-axis launch position                     & $0$    & m     \\
 $y_0$         & Altitude-axis launch position                  & $0$    & m     \\
 $z_0$         & Cross-range-axis launch position               & $0$    & m     \\
 \midrule
-\multicolumn{4}{l}{\emph{Integrator}} \\
+\multicolumn{4}{l}{\textbf{Integrator}} \\
 $t_{\max}$    & Maximum propagation time                       & $300$  & s     \\
 \bottomrule
 \end{tabular}
@@ -879,7 +879,7 @@ We simulate our system in MATLAB Simulink R2025a. The system is discretized usin
 \section{Simulation Results}
 \subsection{Ballistic Flight Envelope}
 \label{sec:ballistic-envelope}
-At evenly spaced points along the ballistic trajectory (Figure~\ref{fig:ballistic_trajectories}), we sampled the vehicle state and ran a 30-second stabilization attempt from each sample, recording which initial conditions each controller could recover from. Each shell state maps to the drone's 12-state initial condition by aligning the body $x$-axis with the pointing vector (zero roll, a packaging convention) and rotating the shell's linear and angular velocity into that body frame. A trial was counted as successful if the vehicle survived the full stabilization window without the divergence guard firing and satisfied the three conditions below:
+At evenly spaced points along the ballistic trajectory (Figure~\ref{fig:ballistic_trajectories}), we sampled the vehicle state and ran a 30-second stabilization attempt from each sample, recording which initial conditions each controller could recover from. Each shell state maps to the drone's 12-state initial condition by aligning the body $x$-axis with the pointing vector (zero roll) and rotating the shell's linear and angular velocity into that body frame. A trial was counted as successful if the vehicle survived the full stabilization window without the divergence guard firing and satisfied the three conditions below:
 \begin{equation}
 \label{eq:ballistic-success}
 \sqrt{(x_t-x_f)^2 + (y_t-y_f)^2} \le 10\,\text{m}, \quad
@@ -985,7 +985,7 @@ where $\mathbf{1} = (1,1,1,1)^T$, $e_{M_x} = (0,-1,0,1)^T$, $e_{M_y} = (-1,0,1,0
 \normalsize
 returning $0$ if any component with $\text{dir}_i = 0$ has $\text{base}_i \notin [\Omega^2_{\min},\, \Omega^2_{\max}]$. When the base point is itself feasible, the point returned by Equation~\ref{eq:sat-maxscale} is feasible; when it is not, the returned scale carries no such guarantee. The trailing feasibility checks in the cascade below are therefore load-bearing rather than redundant: each stage short of the terminal fallback returns its candidate only after re-checking the full motor-space point.
 
-We apply cascaded saturation by successively saturating channels, in ascending order of importance, until we reach a feasible control effort. So, we accept relatively minor errors (some yaw error, or a minor loss of altitude) in exchange for controlling more important channels (orientation, and thus, thrust vector pointing). 
+We apply cascaded saturation by successively saturating channels, in ascending order of importance, until we reach a feasible control effort. So, we accept relatively minor errors in exchange for controlling more important channels. 
 
 \begin{enumerate}
 \item The squared rotor speed $\Omega^2 = T_M^{-1}\, u_k$. If $\Omega^2 \in [\Omega^2_{\min},\, \Omega^2_{\max}]^4$, then our control effort satisfies our control limits, and we simply return $\bar u_k = u_k$ and $\Delta u_k = 0$, which is the unmodified dSMC control effort.
@@ -997,7 +997,7 @@ We apply cascaded saturation by successively saturating channels, in ascending o
 \Omega^2(\alpha_{M_z}) = \underbrace{v_T + v_{M_x} + v_{M_y}}_{\text{base}} + \alpha_{M_z}\, \underbrace{v_{M_z}}_{\text{dir}}.
 \end{equation}
 \normalsize
-With $\alpha_{M_z} = \lambda_{\max}(\text{base},\, v_{M_z})$, return $\bar u_k = (T,\, M_x,\, M_y,\, \alpha_{M_z}\, M_z)^T$ if feasible. In this regime, we begin to sacrifice some yaw control, but retain altitude (collective thrust) and attitude (roll/pitch) control.
+With $\alpha_{M_z} = \lambda_{\max}(\text{base},\, v_{M_z})$, return $\bar u_k = (T,\, M_x,\, M_y,\, \alpha_{M_z}\, M_z)^T$ if feasible. In this regime, we begin to sacrifice some yaw control, but retain altitude and attitude control.
 
 \item If yaw scaling is unable to produce a feasible control effort, we temporarily abandon yaw control and begin scaling collective thrust by $\beta_T \in [0, 1]$, which affects our altitude control:
 \small
@@ -1043,10 +1043,10 @@ We now derive the coupling matrix $D_k$ between the auxiliary state and the cont
 \begin{align}
 \label{eq:sat-A-def}
 A_{ij} &\triangleq \frac{\partial (\Delta s_i)}{\partial u_j}
-&&\text{(\emph{formula coefficient}: how commanded $u_j$ enters $\Delta s_i$)} \\
+&&\text{(formula coefficient: how commanded $u_j$ enters $\Delta s_i$)} \\
 \label{eq:sat-C-def}
 C_{ij} &\triangleq \frac{\partial (\Delta s_i)}{\partial (\Delta u_j)}
-&&\text{(\emph{deficit-response coefficient}: how the deficit propagates)}.
+&&\text{(deficit-response coefficient: how the deficit propagates)}.
 \end{align}
 Decompose the intended surface change as
 \begin{equation}
@@ -1076,7 +1076,7 @@ The six nonzero entries follow from direct differentiation of the discrete slidi
 \dot z_{k+1} - \dot z_k = \Delta t \left[ \frac{\cs\phi_k\, \cs\theta_k}{m}\, u_{1,k} \;-\; g \;-\; \frac{K_3}{m}\,\dot z_k \right].
 \end{equation}
 \normalsize
-With $s_{z,k} = \alpha_z(z_k^d - z_k) + (\dot z_k^d - \dot z_k)$ and constant reference state inputs (as is the case when landing, where the reference state is simply the landing point at rest), the increment is:
+With $s_{z,k} = \alpha_z(z_k^d - z_k) + (\dot z_k^d - \dot z_k)$ and constant reference state inputs, the increment is:
 \small
 \begin{equation}
 \Delta_{k+1,k} s_z
@@ -1105,7 +1105,7 @@ The underactuated roll entries $D_{2,1}, D_{2,2}$ follow from
 s_{\phi,k} = -a_1\,\dot y_k + a_2(y_k^d - y_k) - a_3\,\dot\phi_k + a_4(\phi_k^d - \phi_k).
 \end{equation}
 \normalsize
-With a constant reference state (present in the landing case, with the landing point at rest as the desired state), the surface evolution expands as
+With a constant reference state, the surface evolution expands as
 \small
 \begin{equation}
 \Delta_{k+1,k} s_\phi
@@ -1245,9 +1245,9 @@ Schur stability ($|\lambda| < 1$) simply becomes:
 0 < k_{\xi\, \alpha} < 2,
 \qquad \forall\, \alpha.
 \end{equation}
-Plant inertia parameters $(m, J_{xx}, J_{yy}, J_{zz})$ enter only through $D_k$, which lives in the off-diagonal block and does not affect the spectrum, so the Schur \emph{condition} is parameter-uniform. The closed-loop decay constants are not: they depend on $M_D \triangleq \sup_k |D_k|$ through the ISS decay rate $\nu$ of Section~\ref{sec:sat-iss}.
+Plant inertia parameters $(m, J_{xx}, J_{yy}, J_{zz})$ enter only through $D_k$, which lives in the off-diagonal block and does not affect the spectrum, so the Schur condition is parameter-uniform. The closed-loop decay constants are not: they depend on $M_D \triangleq \sup_k |D_k|$ through the ISS decay rate $\nu$ of Section~\ref{sec:sat-iss}.
 
-Two steps above are implicit and deserve explicit justification, since for a general linear time-varying (LTV) system, pointwise Schur eigenvalues do not imply stability: the cancellation in Equation~\ref{eq:sat-cancellation} takes $D_{k+1} \approx D_k$, and the spectrum in Equation~\ref{eq:sat-spectrum} is that of the frozen-time matrix $\mathcal{A}_k$. Both are rescued by the structure of $\mathcal{A}_k$. Because the diagonal blocks are constant and $D_k$ enters only the off-diagonal block, the frozen-time spectrum is $k$-independent, and the LTV system is exponentially stable whenever $M_D < \infty$: $\xi$ decays autonomously through the constant block $I - K_\xi$, and $\tilde s$ obeys a constant-coefficient stable recursion driven by the bounded input $D_k\, K_\xi\, \xi_k$, plus the remainder $(D_k - D_{k+1})\, \xi_{k+1}$ from the $D_{k+1} \approx D_k$ step. Bounding this term needs the step-to-step \emph{variation} of $D_k$, not just its magnitude $M_D$, so we add to the envelope of Equation~\ref{eq:sat-envelope} a slew bound $|D_{k+1} - D_k| \leq L\, \Delta t$ along closed-loop trajectories. This holds whenever the thrust and attitude rates that drive $D_k$ are bounded, which the reaching transient satisfies once the fully-actuated variables enter the clip band. Under it the remainder is $O(L\,\Delta t\,|\xi_k|)$ and vanishes with $\xi$. The ISS-Lyapunov inequality of Section~\ref{sec:sat-iss} is the formal certificate: with an active deficit the remainder is $O(|\xi_k| + |\Delta u_k|)$, carried as an additional input in Equation~\ref{eq:sat-ISS}, and the slew bound makes its coefficient $O(L\,\Delta t)$, perturbing $\nu$ and $\gamma$ only at higher order. The frozen-time spectrum is therefore diagnostic; the ISS inequality, under Equation~\ref{eq:sat-envelope} and this slew bound, is the operative certificate.
+Two steps above are implicit and deserve explicit justification, since for a general linear time-varying (LTV) system, pointwise Schur eigenvalues do not imply stability: the cancellation in Equation~\ref{eq:sat-cancellation} takes $D_{k+1} \approx D_k$, and the spectrum in Equation~\ref{eq:sat-spectrum} is that of the frozen-time matrix $\mathcal{A}_k$. Both are rescued by the structure of $\mathcal{A}_k$. Because the diagonal blocks are constant and $D_k$ enters only the off-diagonal block, the frozen-time spectrum is $k$-independent, and the LTV system is exponentially stable whenever $M_D < \infty$: $\xi$ decays autonomously through the constant block $I - K_\xi$, and $\tilde s$ obeys a constant-coefficient stable recursion driven by the bounded input $D_k\, K_\xi\, \xi_k$, plus the remainder $(D_k - D_{k+1})\, \xi_{k+1}$ from the $D_{k+1} \approx D_k$ step. Bounding this term needs the step-to-step variation of $D_k$, not just its magnitude $M_D$, so we add to the envelope of Equation~\ref{eq:sat-envelope} a slew bound $|D_{k+1} - D_k| \leq L\, \Delta t$ along closed-loop trajectories. This holds whenever the thrust and attitude rates that drive $D_k$ are bounded, which the reaching transient satisfies once the fully-actuated variables enter the clip band. Under it the remainder is $O(L\,\Delta t\,|\xi_k|)$ and vanishes with $\xi$. The ISS-Lyapunov inequality of Section~\ref{sec:sat-iss} is the formal certificate: with an active deficit the remainder is $O(|\xi_k| + |\Delta u_k|)$, carried as an additional input in Equation~\ref{eq:sat-ISS}, and the slew bound makes its coefficient $O(L\,\Delta t)$, perturbing $\nu$ and $\gamma$ only at higher order. The frozen-time spectrum is therefore diagnostic; the ISS inequality, under Equation~\ref{eq:sat-envelope} and this slew bound, is the operative certificate.
 
 \subsection{ISS-Lyapunov Stability}
 \label{sec:sat-iss}
@@ -1327,7 +1327,7 @@ Apply with $u = (I-E) \tilde s_k$, $P = W_s$, $v = D_k K_\xi \xi_k$,
 \;+\; \tfrac{1}{\mu}\, \xi_k^T K_\xi^T D_k^T W_s D_k K_\xi\, \xi_k.
 \end{equation}
 \normalsize
-The first Young term carries the quadratic form $(I-E)^T W_s (I-E)$, \emph{not} the decay term~(a), so its per-channel coefficient is $+\mu\,(1 - \eta_\alpha \Delta t)^2\, (W_s)_{\alpha\alpha}$. Combining it with (a) gives the net diagonal coefficient $-\bigl[\eta_\alpha \Delta t\,(2 - \eta_\alpha \Delta t) - \mu\,(1 - \eta_\alpha \Delta t)^2\bigr](W_s)_{\alpha\alpha}$ on each $\tilde s_\alpha^2$, which is negative definite iff the bracket is positive on every channel:
+The first Young term carries the quadratic form $(I-E)^T W_s (I-E)$, not the decay term~(a), so its per-channel coefficient is $+\mu\,(1 - \eta_\alpha \Delta t)^2\, (W_s)_{\alpha\alpha}$. Combining it with (a) gives the net diagonal coefficient $-\bigl[\eta_\alpha \Delta t\,(2 - \eta_\alpha \Delta t) - \mu\,(1 - \eta_\alpha \Delta t)^2\bigr](W_s)_{\alpha\alpha}$ on each $\tilde s_\alpha^2$, which is negative definite iff the bracket is positive on every channel:
 \begin{equation}
 \label{eq:sat-mu-bound}
 0 < \mu < \min_\alpha \frac{\eta_\alpha \Delta t\,(2 - \eta_\alpha \Delta t)}{(1 - \eta_\alpha \Delta t)^2}.
@@ -1346,9 +1346,9 @@ The first piece carries the form $(I-K_\xi)^T W_\xi (I-K_\xi)$, contributing $+\
 \label{eq:sat-nu2-bound}
 0 < \nu_2 < \min_\alpha \frac{k_{\xi\,\alpha}\,(2 - k_{\xi\,\alpha})}{(1-k_{\xi\,\alpha})^2}.
 \end{equation}
-Under the matched gains of Equation~\ref{eq:sat-matched}, $k_{\xi\,\alpha} = \eta_\alpha \Delta t$ and this bound coincides with Equation~\ref{eq:sat-mu-bound}: both equal $0.35$ for the Table~\ref{tab:gains-scalars} gains at $50$~Hz, binding again on the $(z, \psi)$ channels. The second piece adds to the deficit penalty (f). We fix $\mu$ and $\nu_2$ within Equations~\ref{eq:sat-mu-bound} and \ref{eq:sat-nu2-bound} \emph{before} selecting $\rho$ in the next step, because the domination condition there must hold against the $\xi$-decay margin that survives this erosion.
+Under the matched gains of Equation~\ref{eq:sat-matched}, $k_{\xi\,\alpha} = \eta_\alpha \Delta t$ and this bound coincides with Equation~\ref{eq:sat-mu-bound}: both equal $0.35$ for the Table~\ref{tab:gains-scalars} gains at $50$~Hz, binding again on the $(z, \psi)$ channels. The second piece adds to the deficit penalty (f). We fix $\mu$ and $\nu_2$ within Equations~\ref{eq:sat-mu-bound} and \ref{eq:sat-nu2-bound} before selecting $\rho$ in the next step, because the domination condition there must hold against the $\xi$-decay margin that survives this erosion.
 
-\item With $\mu$ and $\nu_2$ fixed, and provided $M_D = \sup_k |D_k| < \infty$ (assumption (iii) below), the sum of the cross-square residual (c) and the leftover from the first Young absorption (Equation~\ref{eq:sat-young}) is bounded by $\bigl[(1 + 1/\mu)\, M_D^2\, |K_\xi|^2\, |W_s|\bigr]\, |\xi_k|^2$. We then choose $\rho$ large enough that the \emph{eroded} $\xi$-decay dominates this bound,
+\item With $\mu$ and $\nu_2$ fixed, and provided $M_D = \sup_k |D_k| < \infty$ (assumption (iii) below), the sum of the cross-square residual (c) and the leftover from the first Young absorption (Equation~\ref{eq:sat-young}) is bounded by $\bigl[(1 + 1/\mu)\, M_D^2\, |K_\xi|^2\, |W_s|\bigr]\, |\xi_k|^2$. We then choose $\rho$ large enough that the eroded $\xi$-decay dominates this bound,
 \begin{equation}
 \label{eq:sat-rho-choice}
 \rho\, \min_\alpha\, \bigl[ k_{\xi\,\alpha}\,(2 - k_{\xi\,\alpha}) - \nu_2\,(1-k_{\xi\,\alpha})^2 \bigr]\,(W_\xi)_{\alpha\alpha} \;>\; (1 + \tfrac{1}{\mu})\, M_D^2\, |K_\xi|^2\, |W_s|,
@@ -1400,7 +1400,7 @@ where the first three conditions bound the cross-coupling magnitudes and the las
 \label{eq:sat-MD-bound}
 M_D \;\leq\; \sqrt{6}\; \Delta t\, \max\!\left( \frac{1}{m},\;\; \frac{6}{\epsilon_u\, \epsilon_a},\;\; \frac{a_3\, l}{J_{xx}},\;\; \frac{a_7\, l}{J_{yy}},\;\; \frac{1}{J_{zz}} \right) \;<\; \infty.
 \end{equation}
-For the successful-landing trials, Figure~\ref{fig:sat_control_norm_on} shows the applied effort norm holding at the allocation bound through the reaching transient and then relaxing toward hover trim, never approaching zero thrust---evidence for the nonzero-thrust condition of Equation~\ref{eq:sat-envelope}, though not for its attitude conditions. This check is also one-sided: the successful trials are, by selection, exactly those the controller recovers, so the figure shows the envelope is non-vacuous on the recovered set but does not establish that failing trials fail \emph{because} they leave it. Characterizing where failures exit the envelope is left to future work. We also note that the envelope is needed only to bound the cross-coupling \emph{magnitude}, not the anti-windup \emph{direction} on the thrust channel: substituting $D_{1,1} = \Delta t\, \cs\phi_k\, \cs\theta_k / m$ into the wrapped thrust law cancels the attitude factors, giving $\partial u_T / \partial \xi_T = -\eta_z\, \Delta t$, so a positive thrust deficit reduces the commanded thrust by the same amount at every attitude.
+For the successful-landing trials, Figure~\ref{fig:sat_control_norm_on} shows the applied effort norm holding at the allocation bound through the reaching transient and then relaxing toward hover trim, never approaching zero thrust---evidence for the nonzero-thrust condition of Equation~\ref{eq:sat-envelope}, though not for its attitude conditions. This check is also one-sided: the successful trials are, by selection, exactly those the controller recovers, so the figure shows the envelope is non-vacuous on the recovered set but does not establish that failing trials fail because they leave it. Characterizing where failures exit the envelope is left to future work. We also note that the envelope is needed only to bound the cross-coupling magnitude, not the anti-windup direction on the thrust channel: substituting $D_{1,1} = \Delta t\, \cs\phi_k\, \cs\theta_k / m$ into the wrapped thrust law cancels the attitude factors, giving $\partial u_T / \partial \xi_T = -\eta_z\, \Delta t$, so a positive thrust deficit reduces the commanded thrust by the same amount at every attitude.
 
 \subsection{Reduction to the Unconstrained Limit}
 \label{sec:sat-reduction}
