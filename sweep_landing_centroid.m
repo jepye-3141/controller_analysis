@@ -445,6 +445,28 @@ clip_lo_frac = mean(clip_lo_arr(:), 'omitnan');
 clip_hi_by_station = squeeze(mean(clip_hi_arr, [2 3], 'omitnan'));
 clip_lo_by_station = squeeze(mean(clip_lo_arr, [2 3], 'omitnan'));
 
+% Compact per-trial criteria (partial per-trial storage, no trajectories): one
+% row per attempted-and-scored trial, letting a caller see WHICH success
+% criterion each trial failed (duration/position/velocity/rotation) and the
+% measured extrema, without the ~500 KB/trial trajectory bloat.
+ran = find(~cellfun(@isempty, {results.criteria}));
+nR  = numel(ran);
+[ct_i, ct_k, ct_nb, ct_tgt, ct_miss, ct_vr, ct_rr] = deal(nan(nR, 1));
+[ct_stable, ct_dur, ct_pos, ct_vel, ct_rot] = deal(false(nR, 1));
+for q = 1:nR
+    idx = ran(q); c = results(idx).criteria;
+    ct_i(q)   = I_idx(idx);  ct_k(q) = K_idx(idx);  ct_nb(q) = NB_idx(idx);
+    ct_tgt(q) = results(idx).target_deploy_idx;
+    ct_stable(q) = results(idx).stable;
+    ct_dur(q) = c.duration_ok;  ct_pos(q) = c.position_ok;
+    ct_vel(q) = c.velocity_ok;  ct_rot(q) = c.rotation_ok;
+    ct_miss(q) = c.final_miss;  ct_vr(q) = c.max_speed_ratio;  ct_rr(q) = c.max_rot_post_ratio;
+end
+crit_table = table(ct_i, ct_k, ct_nb, ct_tgt, ct_stable, ct_dur, ct_pos, ct_vel, ct_rot, ...
+    ct_miss, ct_vr, ct_rr, 'VariableNames', ...
+    {'deploy','ct','nb','target','stable','duration_ok','position_ok','velocity_ok', ...
+     'rotation_ok','final_miss','max_speed_ratio','max_rot_post_ratio'});
+
 out = struct( ...
     'p_centroid',         [cx; cy; cz], ...
     'reachability_pct',   reachability_pct, ...
@@ -456,7 +478,8 @@ out = struct( ...
     'clip_hi_frac',       clip_hi_frac, ...
     'clip_lo_frac',       clip_lo_frac, ...
     'clip_hi_by_station', clip_hi_by_station, ...
-    'clip_lo_by_station', clip_lo_by_station);
+    'clip_lo_by_station', clip_lo_by_station, ...
+    'crit_table',         crit_table);
 
 if ~visualize
     return
