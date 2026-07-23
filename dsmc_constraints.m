@@ -91,14 +91,15 @@ d = 2;   % yaw torque coefficient
 %   Omega2_min = 0.0  : motors can spin to zero (typical ESC convention)
 %   Omega2_max : total thrust = 4*b*Omega2_max  =>  T/W = 4*b*Omega2_max/(m*g).
 %     At the shipped value 2 that is 40 N, T/W = 5.10 -- these worked numbers
-%     assume that value; set_omega2_max.m rewrites only the literal below.
+%     assume that value.
 % Hover-trim feasibility (Plan A+ C2): T/W > 1 requires 4*b*Omega2_max > m*g
 % = 7.848; hover Omega^2 per rotor = m*g/(4*b) = 0.392 must lie inside
 % [Omega2_min, Omega2_max].
-% set_omega2_max.m regexprep-rewrites the Omega2_max literal below on disk --
-% do not reformat that assignment line.
+% Omega2_max is bus-carried (constants_struct.Omega2_max, default 2 in
+% constants.m) so the saturation-cap sweep can vary it per-trial; apply_rotor_clip.m
+% reads the SAME bus field, keeping every arm's rotor ceiling in sync.
 Omega2_min = 0.0;
-Omega2_max = 2;
+Omega2_max = constants.Omega2_max;
 
 % Matched contraction rate k_xi(alpha) = eta_alpha * dt per channel (Plan A+
 % §4.4); ordering follows xi: [thrust/z; roll/Mx; pitch/My; yaw/Mz].

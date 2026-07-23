@@ -1,4 +1,4 @@
-function u = apply_rotor_clip(u, constants) %#ok<INUSL>
+function u = apply_rotor_clip(u, constants)
 % Shared naive per-rotor saturation clip for the baseline comparison
 % controllers (H-inf, ADRC, SE(3)). Factored verbatim from the dSMC STEP-12b
 % clip in dsmc_constraints.m so every arm respects IDENTICAL actuator limits and
@@ -13,21 +13,20 @@ function u = apply_rotor_clip(u, constants) %#ok<INUSL>
 % precisely the deliberately-"naive" baseline the dSMC is meant to beat.
 %
 % Codegen-safe: plain matrix math, gains as literals, no persistent state.
-% constants is accepted for interface uniformity with the control laws (and to
-% ease a future promotion of these coefficients onto the bus) but is UNUSED
-% today: b, d, and the Omega^2 bounds are literals kept byte-identical to
-% dsmc_constraints.m, which remains their canonical source of truth. If those
-% literals change there (e.g. via set_omega2_max.m), mirror the change here.
+% The Omega^2 cap Omega2_max is read from the bus (constants.Omega2_max), the
+% SAME field dsmc_constraints.m reads -- so a single bus value keeps this naive
+% clip and the dSMC allocation on an IDENTICAL rotor ceiling, no source mirroring.
+% b, d, and Omega2_min remain literals kept byte-identical to dsmc_constraints.m.
 
 % Mixing-matrix coefficients (Omega^2 -> u), from dsmc_constraints.m
 b = 5;   % thrust coefficient
 d = 2;   % yaw torque coefficient
 
-% Per-rotor saturation bounds in Omega^2 space (shipped dSMC values). At
-% Omega2_max = 2 the total thrust ceiling is 4*b*Omega2_max = 40 N (T/W = 5.10
-% at m*g = 7.848 N); hover Omega^2 per rotor = m*g/(4*b) = 0.392 lies inside.
+% Per-rotor saturation bounds in Omega^2 space. At Omega2_max = 2 the total
+% thrust ceiling is 4*b*Omega2_max = 40 N (T/W = 5.10 at m*g = 7.848 N); hover
+% Omega^2 per rotor = m*g/(4*b) = 0.392 lies inside.
 Omega2_min = 0.0;
-Omega2_max = 2;
+Omega2_max = constants.Omega2_max;
 
 % Mixer (same TM as dsmc_constraints STEP 12b). Rows: [T; Mx; My; Mz].
 TM = [b   b   b   b;

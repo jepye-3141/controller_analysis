@@ -10,6 +10,7 @@ kwt = 0.1;
 dt   = 1/50; % dSMC rate (bus); the lqrd 1/50 below is set separately -- matching is coincidental
 K = 1;
 m_uncertain = m; % separate from m so uncertainty injection doesn't rebuild the bus
+Omega2_max = 2; % per-rotor Omega^2 saturation cap (bus); T/W = 4*b*Omega2_max/(m*g). Swept by the saturation-cap campaign
 
 constants_struct.g = g;
 constants_struct.l = l;
@@ -25,6 +26,7 @@ constants_struct.m = m;
 constants_struct.m_uncertain = m_uncertain;
 constants_struct.saturation_on = true;  % gates the Plan A+ allocation in dsmc_constraints
 constants_struct.unconstrained = false;  % true => dsmc_constraints delegates to dsmc_no_constraints (no limits)
+constants_struct.Omega2_max = Omega2_max;  % per-rotor Omega^2 cap; bus-carried (was a source literal in dsmc_constraints.m / apply_rotor_clip.m) so the sweep can vary it per-trial
 constants_struct_info = Simulink.Bus.createObject(constants_struct);
 constants_struct_bus = evalin("base", constants_struct_info.busName);
 
