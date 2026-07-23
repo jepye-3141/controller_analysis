@@ -5,8 +5,11 @@ function out = sweep_landing_centroid(traj_params, visualize)
 %
 % traj_params : struct, all fields required:
 %   .Vo .el .az .w_z0 .w_y0 .p .alpha_0 .beta_0 .x_0 .y_0 .z_0 .t_max
-%   Optional: .saturation_on -> constants_struct.saturation_on; .label
-%   suffixes figure names and the saved log ("_sat_on" etc.).
+%   Optional: .saturation_on -> constants_struct.saturation_on;
+%   .Omega2_max -> constants_struct.Omega2_max (per-rotor cap, default 2);
+%   .model -> Simulink model to sweep (default "discrete_smc_swarm_single";
+%   e.g. "se3_swarm_single" for the SE(3) baseline); .label suffixes figure
+%   names and the saved log ("_sat_on" etc.).
 % visualize   : bool, default false. When true, render TO_01..TO_07 figures
 %               and save logs/trajectory_optimization_log<label>.mat
 %               (whole-workspace save; reload 'out' via load(log, "out")).
@@ -59,11 +62,27 @@ elseif isfield(traj_params, 'label')
         'traj_params has label "%s" but no saturation_on field; using default %d. Possible typo?', ...
         traj_params.label, constants_struct.saturation_on);
 end
+% Per-rotor Omega^2 saturation cap: override the constants.m default (2) so a
+% driver can sweep the actuator ceiling per call. Reaches every arm's clip
+% (dSMC STEP-12b + apply_rotor_clip) since both read constants.Omega2_max.
+if isfield(traj_params, 'Omega2_max')
+    constants_struct.Omega2_max = traj_params.Omega2_max;
+end
 label_suffix = "";
 if isfield(traj_params, 'label')
     label_suffix = "_" + traj_params.label;
 end
 STABILIZE = 4;
+
+% Model to sweep: the dSMC single-drone ballistic-stabilization model by
+% default; pass traj_params.model to target a make_baseline_models.m clone
+% (e.g. "se3_swarm_single"). Any such model must read the same base-workspace
+% statics (A, B, constants_struct[_bus], dt, x0_step, xf) and log
+% posout/velout/rotvelout/ctrlout.
+model_name = "discrete_smc_swarm_single";
+if isfield(traj_params, 'model')
+    model_name = string(traj_params.model);
+end
 
 %% Sweep configuration
 n_deploy   = 8;             % deployment points sampled along 3D mission trajectory
@@ -150,7 +169,7 @@ results = repmat(struct( ...
 % Boundary trials (target_idx out of range) go straight into results and
 % skip the queue.
 n_trials_max = n_deploy * n_ct * n_nb;
-sim_inputs = repmat(Simulink.SimulationInput("discrete_smc_swarm_single"), 1, n_trials_max);
+sim_inputs = repmat(Simulink.SimulationInput(model_name), 1, n_trials_max);
 trial_meta = repmat(struct('i', 0, 'k', 0, 'nb', 0, 'xf', zeros(3,1)), 1, n_trials_max);
 trial_ptr  = 0;
 
@@ -159,7 +178,7 @@ trial_ptr  = 0;
 % dt, x0_step, xf); per-trial copies setVariable only xi, xf_ballistic,
 % simcase. TransferBaseWorkspaceVariables is off, so any new model dependency
 % MUST be added to this static block or trials silently fail/error.
-simIn_template = Simulink.SimulationInput("discrete_smc_swarm_single");
+simIn_template = Simulink.SimulationInput(model_name);
 simIn_template = simIn_template.setModelParameter( ...
     'StopTime', num2str(sim_time), 'SimulationMode', 'rapid-accelerator');
 simIn_template = simIn_template.setVariable('A', A);
