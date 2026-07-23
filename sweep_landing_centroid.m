@@ -161,6 +161,8 @@ results = repmat(struct( ...
     'target_deploy_idx', NaN, ...
     'time_to_land',      NaN, ...
     'stable',            false, ...
+    'clip_hi',           NaN, ...
+    'clip_lo',           NaN, ...
     'criteria',          [], ...
     'trajectory',        []), n_deploy, n_ct, n_nb);
 
@@ -244,6 +246,16 @@ sim_outputs = parsim(sim_inputs, 'ShowProgress', 'on', 'StopOnError', 'off', ...
 
 % Post-pass: score each SimulationOutput into results(i,k,nb)
 n_errored = 0;
+% H3 clip-active reconstruction: ctrlout is [T;Mx;My;Mz] with ABSOLUTE thrust
+% (probe-confirmed), so TM_mix_inv*ctrl gives the per-rotor Omega^2 the clip
+% operated on. Flag timesteps where any rotor sits at a box bound -- upper =
+% ceiling / attitude-authority limit, lower = motor cutoff (STAGE-3 gamma=0).
+b_mix = 5; d_mix = 2;
+TM_mix = [b_mix b_mix b_mix b_mix; 0 -b_mix 0 b_mix; -b_mix 0 b_mix 0; d_mix -d_mix d_mix -d_mix];
+TM_mix_inv = inv(TM_mix); %#ok<MINV>
+Omega2_max_l = constants_struct.Omega2_max;
+Omega2_min_l = 0.0;
+clip_tol = 1e-6;
 for ptr = 1:length(sim_outputs)
     meta = trial_meta(ptr);
     out_sim = sim_outputs(ptr);
@@ -279,6 +291,11 @@ for ptr = 1:length(sim_outputs)
         ctrl_trial = ctrl_raw;
     end
 
+    % H3 clip-active fractions from the post-clip command (see mixer above).
+    Om2_tr  = (TM_mix_inv * ctrl_trial.').';   % T x 4 per-rotor Omega^2
+    clip_hi = mean(any(Om2_tr >= Omega2_max_l - clip_tol, 2));
+    clip_lo = mean(any(Om2_tr <= Omega2_min_l + clip_tol, 2));
+
     % Success criterion (paper eq:ballistic-success): full duration +
     % final-XY tol + velocity ratio (whole trace) + rotation ratio (t > 1 s).
     [stable, crit] = ballistic_success(t_trial, pos_trial, vel_trial, ...
@@ -297,6 +314,8 @@ for ptr = 1:length(sim_outputs)
 
     results(meta.i, meta.k, meta.nb).time_to_land = time_to_land;
     results(meta.i, meta.k, meta.nb).stable       = stable;
+    results(meta.i, meta.k, meta.nb).clip_hi      = clip_hi;
+    results(meta.i, meta.k, meta.nb).clip_lo      = clip_lo;
     results(meta.i, meta.k, meta.nb).criteria     = crit;
     results(meta.i, meta.k, meta.nb).trajectory   = struct( ...
         'time',   t_trial, ...
@@ -415,12 +434,29 @@ attempted_mask  = ~isnan([results.target_deploy_idx]);
 n_scored = nnz(attempted_mask) - n_errored;
 reachability_pct = sum(stable_arr(:)) / max(n_scored, 1);
 
+% Per-deploy-station attempt/success counts (regime stratification: ascending
+% stations 1-3 vs feasible/descending 4-8) and H3 clip-active fractions.
+deploy_total   = squeeze(sum(~isnan(tgt_arr), [2 3]));
+deploy_success = squeeze(sum(stable_arr, [2 3]));
+clip_hi_arr = reshape([results.clip_hi], n_deploy, n_ct, n_nb);
+clip_lo_arr = reshape([results.clip_lo], n_deploy, n_ct, n_nb);
+clip_hi_frac = mean(clip_hi_arr(:), 'omitnan');
+clip_lo_frac = mean(clip_lo_arr(:), 'omitnan');
+clip_hi_by_station = squeeze(mean(clip_hi_arr, [2 3], 'omitnan'));
+clip_lo_by_station = squeeze(mean(clip_lo_arr, [2 3], 'omitnan'));
+
 out = struct( ...
     'p_centroid',         [cx; cy; cz], ...
     'reachability_pct',   reachability_pct, ...
     'radial_profile',     radial_profile, ...
     'ballistic_solution', ballistic_solution, ...
-    'n_errored',          n_errored);
+    'n_errored',          n_errored, ...
+    'deploy_total',       deploy_total, ...
+    'deploy_success',     deploy_success, ...
+    'clip_hi_frac',       clip_hi_frac, ...
+    'clip_lo_frac',       clip_lo_frac, ...
+    'clip_hi_by_station', clip_hi_by_station, ...
+    'clip_lo_by_station', clip_lo_by_station);
 
 if ~visualize
     return
