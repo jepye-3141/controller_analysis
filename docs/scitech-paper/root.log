@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.1)  15 JUL 2026 12:24
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.1)  27 JUL 2026 12:41
 entering extended mode
  \write18 enabled.
  %&-line parsing enabled.
@@ -1340,7 +1340,7 @@ r/local/texlive/2026basic/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc}{/usr
 cal/texlive/2026basic/texmf-dist/fonts/enc/dvips/newtx/ntx-ot1-tlf.enc}]
 LaTeX Font Info:    Font shape `T1/ntxtlf/m/n' will be
 (Font)              scaled to size 5.5pt on input line 108.
-<figs/quadrotor.png, id=154, 939.51pt x 768.8725pt>
+<figs/quadrotor.png, id=153, 939.51pt x 768.8725pt>
 File: figs/quadrotor.png Graphic file (type png)
 <use figs/quadrotor.png>
 Package pdftex.def Info: figs/quadrotor.png  used on input line 158.
@@ -1382,62 +1382,65 @@ LaTeX Font Info:    Font shape `U/ntxexa/m/n' will be
 (Font)              scaled to size 6.6pt on input line 185.
  [4]
 LaTeX Font Info:    Font shape `T1/ntxtlf/b/n' will be
-(Font)              scaled to size 8.0pt on input line 313.
+(Font)              scaled to size 8.0pt on input line 314.
  [5] [6] [7]
 LaTeX Font Info:    Font shape `T1/ntxtlf/m/n' will be
-(Font)              scaled to size 6.6pt on input line 625.
+(Font)              scaled to size 6.6pt on input line 626.
  [8] [9]
-LaTeX Font Info:    Font shape `T1/ntxtlf/m/it' will be
-(Font)              scaled to size 8.0pt on input line 845.
 Package epstopdf Info: Source file: <figs/0_ballistic_trajectory.eps>
-(epstopdf)                    date: 2026-07-11 10:43:18
+(epstopdf)                    date: 2026-07-23 10:16:32
 (epstopdf)                    size: 24547 bytes
 (epstopdf)             Output file: <figs/0_ballistic_trajectory-eps-converted-
 to.pdf>
-(epstopdf)                    date: 2026-07-11 10:44:01
+(epstopdf)                    date: 2026-07-27 12:41:02
 (epstopdf)                    size: 18629 bytes
 (epstopdf)             Command: <epstopdf --outfile=figs/0_ballistic_trajectory
 -eps-converted-to.pdf figs/0_ballistic_trajectory.eps>
-(epstopdf)             \includegraphics on input line 870.
+(epstopdf)             \includegraphics on input line 871.
 Package epstopdf Info: Output file is already uptodate.
-<figs/0_ballistic_trajectory-eps-converted-to.pdf, id=273, 2007.5pt x 1405.25pt
+<figs/0_ballistic_trajectory-eps-converted-to.pdf, id=276, 2007.5pt x 1405.25pt
 >
 File: figs/0_ballistic_trajectory-eps-converted-to.pdf Graphic file (type pdf)
 <use figs/0_ballistic_trajectory-eps-converted-to.pdf>
 Package pdftex.def Info: figs/0_ballistic_trajectory-eps-converted-to.pdf  used
- on input line 870.
+ on input line 871.
 (pdftex.def)             Requested size: 375.80544pt x 263.05489pt.
- [10] [11 <./figs/0_ballistic_trajectory-eps-converted-to.pdf>]
-<figs/39_ballistic_envelope.png, id=304, 722.7pt x 289.08pt>
+ [10]
+Overfull \vbox (26.92207pt too high) has occurred while \output is active []
+
+
+[11 <./figs/0_ballistic_trajectory-eps-converted-to.pdf>] [12]
+<figs/39_ballistic_envelope.png, id=319, 722.7pt x 289.08pt>
 File: figs/39_ballistic_envelope.png Graphic file (type png)
 <use figs/39_ballistic_envelope.png>
-Package pdftex.def Info: figs/39_ballistic_envelope.png  used on input line 892
+Package pdftex.def Info: figs/39_ballistic_envelope.png  used on input line 893
 .
 (pdftex.def)             Requested size: 469.75502pt x 187.90417pt.
- [12] [13 <./figs/39_ballistic_envelope.png (PNG copy)>]
+ [13 <./figs/39_ballistic_envelope.png (PNG copy)>]
 LaTeX Font Info:    Font shape `OT1/minntx/b/n' will be
-(Font)              scaled to size 9.0pt on input line 967.
+(Font)              scaled to size 9.0pt on input line 968.
 LaTeX Font Info:    Font shape `OT1/minntx/b/n' will be
-(Font)              scaled to size 6.6pt on input line 967.
+(Font)              scaled to size 6.6pt on input line 968.
 LaTeX Font Info:    Font shape `OT1/minntx/b/n' will be
-(Font)              scaled to size 5.5pt on input line 967.
+(Font)              scaled to size 5.5pt on input line 968.
 LaTeX Font Info:    Font shape `OT1/minntx/b/n' will be
-(Font)              scaled to size 10.0pt on input line 973.
+(Font)              scaled to size 10.0pt on input line 974.
 LaTeX Font Info:    Font shape `OT1/minntx/b/n' will be
-(Font)              scaled to size 7.3pt on input line 973.
+(Font)              scaled to size 7.3pt on input line 974.
  [14] [15] [16] [17] [18] [19] [20] [21]
+[22]
 Package epstopdf Info: Source file: <figs/TO_04_landing_envelope_sat_on.eps>
-(epstopdf)                    date: 2026-07-11 10:43:18
-(epstopdf)                    size: 167342 bytes
+(epstopdf)                    date: 2026-07-23 10:23:32
+(epstopdf)                    size: 176783 bytes
 (epstopdf)             Output file: <figs/TO_04_landing_envelope_sat_on-eps-con
 verted-to.pdf>
-(epstopdf)                    date: 2026-07-11 10:44:01
-(epstopdf)                    size: 36277 bytes
+(epstopdf)                    date: 2026-07-27 12:41:03
+(epstopdf)                    size: 39398 bytes
 (epstopdf)             Command: <epstopdf --outfile=figs/TO_04_landing_envelope
 _sat_on-eps-converted-to.pdf figs/TO_04_landing_envelope_sat_on.eps>
 (epstopdf)             \includegraphics on input line 1482.
 Package epstopdf Info: Output file is already uptodate.
-<figs/TO_04_landing_envelope_sat_on-eps-converted-to.pdf, id=551, 2007.5pt x 14
+<figs/TO_04_landing_envelope_sat_on-eps-converted-to.pdf, id=572, 2007.5pt x 14
 05.25pt>
 File: figs/TO_04_landing_envelope_sat_on-eps-converted-to.pdf Graphic file (typ
 e pdf)
@@ -1445,19 +1448,18 @@ e pdf)
 Package pdftex.def Info: figs/TO_04_landing_envelope_sat_on-eps-converted-to.pd
 f  used on input line 1482.
 (pdftex.def)             Requested size: 375.80544pt x 263.05489pt.
- [22]
 Package epstopdf Info: Source file: <figs/TO_06_control_norm_sat_on.eps>
-(epstopdf)                    date: 2026-07-11 10:43:18
-(epstopdf)                    size: 70309 bytes
+(epstopdf)                    date: 2026-07-23 10:23:32
+(epstopdf)                    size: 115870 bytes
 (epstopdf)             Output file: <figs/TO_06_control_norm_sat_on-eps-convert
 ed-to.pdf>
-(epstopdf)                    date: 2026-07-11 10:44:01
-(epstopdf)                    size: 42025 bytes
+(epstopdf)                    date: 2026-07-27 12:41:03
+(epstopdf)                    size: 63813 bytes
 (epstopdf)             Command: <epstopdf --outfile=figs/TO_06_control_norm_sat
 _on-eps-converted-to.pdf figs/TO_06_control_norm_sat_on.eps>
 (epstopdf)             \includegraphics on input line 1489.
 Package epstopdf Info: Output file is already uptodate.
-<figs/TO_06_control_norm_sat_on-eps-converted-to.pdf, id=560, 2007.5pt x 1405.2
+<figs/TO_06_control_norm_sat_on-eps-converted-to.pdf, id=573, 2007.5pt x 1405.2
 5pt>
 File: figs/TO_06_control_norm_sat_on-eps-converted-to.pdf Graphic file (type pd
 f)
@@ -1465,18 +1467,19 @@ f)
 Package pdftex.def Info: figs/TO_06_control_norm_sat_on-eps-converted-to.pdf  u
 sed on input line 1489.
 (pdftex.def)             Requested size: 375.80544pt x 263.05489pt.
+ [23 <./figs/TO_04_landing_envelope_sat_on-eps-converted-to.pdf>]
 Package epstopdf Info: Source file: <figs/TO_07_landing_heatmap_sat_on.eps>
-(epstopdf)                    date: 2026-07-11 10:43:18
-(epstopdf)                    size: 773840 bytes
+(epstopdf)                    date: 2026-07-23 10:23:32
+(epstopdf)                    size: 806589 bytes
 (epstopdf)             Output file: <figs/TO_07_landing_heatmap_sat_on-eps-conv
 erted-to.pdf>
-(epstopdf)                    date: 2026-07-11 10:44:01
-(epstopdf)                    size: 1994704 bytes
+(epstopdf)                    date: 2026-07-27 12:41:06
+(epstopdf)                    size: 796224 bytes
 (epstopdf)             Command: <epstopdf --outfile=figs/TO_07_landing_heatmap_
 sat_on-eps-converted-to.pdf figs/TO_07_landing_heatmap_sat_on.eps>
 (epstopdf)             \includegraphics on input line 1496.
 Package epstopdf Info: Output file is already uptodate.
-<figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf, id=561, 2007.5pt x 140
+<figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf, id=592, 2007.5pt x 140
 5.25pt>
 File: figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf Graphic file (type
  pdf)
@@ -1484,14 +1487,12 @@ File: figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf Graphic file (type
 Package pdftex.def Info: figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf
   used on input line 1496.
 (pdftex.def)             Requested size: 375.80544pt x 263.05489pt.
- [23 <./figs/TO_04_landing_envelope_sat_on-eps-converted-to.pdf> <./figs/TO_06_
-control_norm_sat_on-eps-converted-to.pdf>]
 LaTeX Font Info:    Font shape `OT1/minntx/b/n' will be
 (Font)              scaled to size 8.0pt on input line 1509.
 LaTeX Font Info:    Font shape `OT1/minntx/b/n' will be
 (Font)              scaled to size 6.0pt on input line 1509.
- [24 <./figs/TO_07_landing_heatmap_sat_on-eps-converted-to.pdf>]
-(./root.bbl
+ [24 <./figs/TO_06_control_norm_sat_on-eps-converted-to.pdf> <./figs/TO_07_land
+ing_heatmap_sat_on-eps-converted-to.pdf>] (./root.bbl
 LaTeX Font Info:    Font shape `T1/ntxtlf/m/it' will be
 (Font)              scaled to size 9.0pt on input line 15.
  [25]) [26] (./root.aux)
@@ -1503,13 +1504,13 @@ Package rerunfilecheck Info: File `root.out' has not changed.
 (rerunfilecheck)             Checksum: 0955D940DE992EA1BD0FA5E517CC9433;5063.
  ) 
 Here is how much of TeX's memory you used:
- 21852 strings out of 469006
- 348987 string characters out of 5454814
- 813409 words of memory out of 5000000
- 49757 multiletter control sequences out of 15000+600000
- 776982 words of font info for 354 fonts, out of 8000000 for 9000
+ 21855 strings out of 469006
+ 348970 string characters out of 5454814
+ 825660 words of memory out of 5000000
+ 49752 multiletter control sequences out of 15000+600000
+ 768391 words of font info for 355 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
- 89i,19n,131p,2108b,741s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 89i,19n,131p,3233b,729s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/NewTXMI.pfb
 ></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/NewTXMI5.pfb
 ></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/NewTXMI7.pfb
@@ -1524,10 +1525,10 @@ usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/txsys.pfb></usr
 /local/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/ztmb.pfb></usr/loc
 al/texlive/2026basic/texmf-dist/fonts/type1/public/newtx/ztmr.pfb></usr/local/t
 exlive/2026basic/texmf-dist/fonts/type1/public/newtx/ztmri.pfb>
-Output written on root.pdf (26 pages, 2886803 bytes).
+Output written on root.pdf (26 pages, 1784535 bytes).
 PDF statistics:
- 743 PDF objects out of 1000 (max. 8388607)
- 632 compressed objects within 7 object streams
+ 760 PDF objects out of 1000 (max. 8388607)
+ 648 compressed objects within 7 object streams
  203 named destinations out of 1000 (max. 500000)
- 55535 words of extra memory for PDF output out of 61914 (max. 10000000)
+ 49391 words of extra memory for PDF output out of 51595 (max. 10000000)
 
