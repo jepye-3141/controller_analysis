@@ -5,8 +5,9 @@ function [success, info] = ballistic_success(t, pos, vel, target_xy, v0_norm, ex
 % applied to logged sim data after the run. The in-model termination chart is
 % NOT the criterion -- a numerical-blowup guard (norms >= 1e5) that stops
 % destabilized sims early; a guard-stopped trial fails condition (a) below.
-% Callers: analysis.m envelope (30 s, all five arms) and
-% sweep_landing_centroid (60 s sweep trials).
+% Four callers: analysis.m envelope (30 s), sweep_ballistic_envelope (the same
+% 30 s envelope factored out, six arms including SE(3)), sweep_landing_centroid
+% (60 s sweep trials) and test_baseline_single (peer-model validation).
 %
 %   success = (a) && (b) && (c) && (d), where
 %     (a) duration:  t(end) >= expected_T - 1e-6   (guard never tripped)

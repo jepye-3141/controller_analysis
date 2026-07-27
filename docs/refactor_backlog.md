@@ -264,6 +264,8 @@ journal-readiness audit §H._
 - **H3:** `replot_*` scripts point at pre-criterion logs — `replot_TO_04.m`/
   `replot_TO_07.m` still load the pre-criterion May-2026
   `logs/trajectory_optimization_log.mat`.
-- **H4:** stale May-21 `TO_06/07_sat_off` EPS copies in `docs/scitech-paper/figs/`.
-- **H6:** `set_omega2_max.m` mutates source on disk (superseded if J1-W1 lands the
-  bus-carried bound); pending J1-W1.
+- ~~**H4:** stale May-21 `TO_06/07_sat_off` EPS copies in `docs/scitech-paper/figs/`.~~
+  **Retired** — both deleted in the 2026-07-27 conference-staging pass. The paper never
+  cited them (it uses the `_sat_on` figures only).
+- ~~**H6:** `set_omega2_max.m` mutates source on disk.~~ **Retired** — J1-W1.2 landed the
+  bus-carried bound (`3ec427f`) and deleted the script.

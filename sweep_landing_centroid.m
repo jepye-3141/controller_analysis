@@ -1,18 +1,22 @@
 function out = sweep_landing_centroid(traj_params, visualize)
-% sweep_landing_centroid  dSMC deploy x crosstrack x neighbor sweep over a
-% mortar trajectory; returns the power-weighted landing centroid plus a
-% radial reachability profile.
+% sweep_landing_centroid  Single-drone deploy x crosstrack x neighbor sweep over
+% a mortar trajectory; returns the power-weighted landing centroid plus a radial
+% reachability profile. The controller is caller-selectable via .model and
+% defaults to the dSMC.
 %
 % traj_params : struct, all fields required:
 %   .Vo .el .az .w_z0 .w_y0 .p .alpha_0 .beta_0 .x_0 .y_0 .z_0 .t_max
 %   Optional: .saturation_on -> constants_struct.saturation_on;
 %   .Omega2_max -> constants_struct.Omega2_max (per-rotor cap, default 2);
 %   .model -> Simulink model to sweep (default "discrete_smc_swarm_single";
-%   e.g. "se3_swarm_single" for the SE(3) baseline); .label suffixes figure
-%   names and the saved log ("_sat_on" etc.).
+%   e.g. "se3_swarm_single" for the SE(3) baseline) -- a full model NAME, unlike
+%   the controller nickname sweep_ballistic_envelope's .model takes;
+%   .label suffixes figure names and the saved log ("_sat_on" etc.).
 % visualize   : bool, default false. When true, render TO_01..TO_07 figures
 %               and save logs/trajectory_optimization_log<label>.mat
 %               (whole-workspace save; reload 'out' via load(log, "out")).
+%               The TO_* titles and filenames say "dSMC" regardless of .model,
+%               so visualize a non-dSMC arm only with .label set.
 %
 % out : struct
 %   .p_centroid          [cx; cy; 0]; NaN when zero trials succeed
@@ -21,6 +25,24 @@ function out = sweep_landing_centroid(traj_params, visualize)
 %   .radial_profile      r_bins, mean_ratio, peak_ratio, half_radius
 %   .ballistic_solution  full mortar struct
 %   .n_errored           parsim trials whose ErrorMessage was non-empty
+%   .deploy_total        n_deploy x 1 attempted trials per deploy station.
+%                        Counts parsim-errored trials, unlike
+%                        reachability_pct's denominator, so stratified
+%                        per-station ratios differ from the headline metric
+%                        whenever n_errored > 0.
+%   .deploy_success      n_deploy x 1 stable trials per deploy station
+%   .clip_hi_frac        mean over trials of the fraction of timesteps with at
+%   .clip_lo_frac        least one rotor at Omega2_max / at Omega2_min.
+%                        Meaningful only for arms that actually clip (the dSMC
+%                        STEP-12b path and the apply_rotor_clip baselines
+%                        se3/adrc/hinf); identically 0 for the unclipped arms.
+%   .clip_hi_by_station  n_deploy x 1 of the same two fractions, per station
+%   .clip_lo_by_station
+%   .crit_table          one row per attempted-and-scored trial: grid position
+%                        (deploy, ct, nb -- 1-based INDICES, not physical
+%                        values, so ct=3 is the -100 m offset), stable, the
+%                        four ballistic_success clause flags, and the measured
+%                        final_miss / max_speed_ratio / max_rot_post_ratio.
 %
 % Per-trial success ('stable') is scored post-hoc by ballistic_success:
 % full duration (blowup guard never tripped) + final XY within reach_tol
@@ -250,6 +272,10 @@ n_errored = 0;
 % (probe-confirmed), so TM_mix_inv*ctrl gives the per-rotor Omega^2 the clip
 % operated on. Flag timesteps where any rotor sits at a box bound -- upper =
 % ceiling / attitude-authority limit, lower = motor cutoff (STAGE-3 gamma=0).
+% b_mix/d_mix are a third copy of the mixer constants; dsmc_constraints.m and
+% apply_rotor_clip.m hold the other two. Unlike Omega2_max they are not bus-
+% carried, so a mixer change has to land in all three or this reconstruction
+% quietly reports the wrong rotor speeds.
 b_mix = 5; d_mix = 2;
 TM_mix = [b_mix b_mix b_mix b_mix; 0 -b_mix 0 b_mix; -b_mix 0 b_mix 0; d_mix -d_mix d_mix -d_mix];
 TM_mix_inv = inv(TM_mix); %#ok<MINV>
@@ -292,7 +318,15 @@ for ptr = 1:length(sim_outputs)
     end
 
     % H3 clip-active fractions from the post-clip command (see mixer above).
-    Om2_tr  = (TM_mix_inv * ctrl_trial.').';   % T x 4 per-rotor Omega^2
+    % Scored on ctrl_raw, NOT the zero-padded ctrl_trial: a pad row inverts to
+    % Om2 = 0 on all four rotors, which reads as lower-bound clipping and inflates
+    % clip_lo by n_pad/T. Only 1-2 samples out of ~3000, but it is noise we
+    % introduced ourselves. Pad rows never reach the ceiling, so clip_hi's COUNT
+    % is unchanged -- but both fractions share the row-count denominator, which
+    % shrinks from T to T-n_pad, so the reported clip_hi rises by that ratio too.
+    % The campaign's recorded values predate this narrowing: clip_lo sits a hair
+    % high, clip_hi a hair low (both sub-0.1% absolute).
+    Om2_tr  = (TM_mix_inv * ctrl_raw.').';   % T_ctrl x 4 per-rotor Omega^2
     clip_hi = mean(any(Om2_tr >= Omega2_max_l - clip_tol, 2));
     clip_lo = mean(any(Om2_tr <= Omega2_min_l + clip_tol, 2));
 
@@ -434,8 +468,16 @@ attempted_mask  = ~isnan([results.target_deploy_idx]);
 n_scored = nnz(attempted_mask) - n_errored;
 reachability_pct = sum(stable_arr(:)) / max(n_scored, 1);
 
-% Per-deploy-station attempt/success counts (regime stratification: ascending
-% stations 1-3 vs feasible/descending 4-8) and H3 clip-active fractions.
+% Per-deploy-station attempt/success counts and H3 clip-active fractions. The
+% campaign strata (ascending = stations 1-3, feasible/descending = 4-8) are read
+% off these counts by the caller, not enforced here. Where that 3|4 boundary sits
+% depends on the launch, not on this code: stations sample 20-80% of arc length,
+% and on the operational Vo=94/el=64 arc apogee falls between station 3 (37%) and
+% station 4 (46%). Retune the launch and the boundary moves. Re-derive it from the
+% trajectory before reusing those index ranges.
+% Boundary cells that never ran have isnan(target_deploy_idx), so they drop out of
+% deploy_total, and their stable defaults to false so they add nothing to
+% deploy_success either.
 deploy_total   = squeeze(sum(~isnan(tgt_arr), [2 3]));
 deploy_success = squeeze(sum(stable_arr, [2 3]));
 clip_hi_arr = reshape([results.clip_hi], n_deploy, n_ct, n_nb);
@@ -592,11 +634,9 @@ ylim([0 sim_time])
 export_figure("figs/TO_02_settling_time" + label_suffix)
 
 %% Deployment-point success rate (averaged over all valid ct x neighbor trials)
-% Trials with isnan(target_deploy_idx) never ran (parsim was skipped), so
-% stable defaults to false and contributes 0 to the success sum.
-deploy_total   = squeeze(sum(~isnan(tgt_arr), [2 3]));
-deploy_success = squeeze(sum(stable_arr, [2 3]));
-deploy_ratio   = deploy_success ./ max(deploy_total, 1);
+% deploy_total/deploy_success were already computed above for the returned struct
+% and are still in scope, so only the ratio is new here.
+deploy_ratio = deploy_success ./ max(deploy_total, 1);
 
 n_half   = 32;
 cmap_ryg = ryg_cmap(n_half);

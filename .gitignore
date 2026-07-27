@@ -28,3 +28,7 @@ design work/
 
 # Regenerable vector figures (PNG twins are tracked; EPS kept on disk only for the local paper build)
 *.eps
+
+# One-off forensic / orchestration scripts (not release tooling; kept local)
+analyze_forensic_cascade.m
+run_F_and_B.m

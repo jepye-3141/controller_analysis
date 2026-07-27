@@ -2,9 +2,11 @@ function u = apply_rotor_clip(u, constants)
 % Shared naive per-rotor saturation clip for the baseline comparison
 % controllers (H-inf, ADRC, SE(3)). Factored verbatim from the dSMC STEP-12b
 % clip in dsmc_constraints.m so every arm respects IDENTICAL actuator limits and
-% the control LAW is the only variable across the comparison -- which is what
-% makes the dSMC's smart priority-weighted Omega^2 allocation a fair, meaningful
-% win over the others' naive clip.
+% the control LAW is the only variable across the comparison.
+%
+% Worth knowing before reading this as a rigged comparison: SE(3) runs on this
+% naive clip and still beats dSMC-sat on the envelope (14/17 vs 9/17) and,
+% narrowly, on the landing sweep (62.9% vs 60.7%).
 %
 % Maps the commanded u = [T; Mx; My; Mz] into rotor-speed-squared (Omega^2)
 % space through the mixer inverse, clamps each rotor to [Omega2_min, Omega2_max],

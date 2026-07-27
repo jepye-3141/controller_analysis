@@ -4,6 +4,16 @@ function u = hinf_controller(A, B, state, xd, x0, constants) %#ok<INUSL>
 % the fair-peer baselines vs the custom dSMC; see docs/controller_baselines_plan.md
 % section 5.1. Companion offline design script: hinf_design.m.
 %
+% ENVELOPE RESULT: 0/17 on the 17-point ballistic-stabilization envelope (SE(3)
+% 14/17, dSMC-sat 9/17; docs/controller_baselines_plan.md). Read that zero as a
+% baseline outcome, not a broken file: the synthesis is sound (gamma = 1.11179,
+% and hinf_design.m validates closed-loop stability and feedback sign on the
+% true nonlinear plant, failing closed rather than emitting a destabilizing
+% controller), and the missing anti-windup a tumbling deploy exposes is a
+% deliberate fair-comparison handicap (see the note at the bottom of the file).
+% Re-score any change with test_baseline_single.m -- same seeds, same oracle as
+% the envelope.
+%
 % A, B unused (Simulink interface). x0 unused: the H-inf state xK is the
 % controller's own (observer-like) state and starts at rest, unlike the dSMC
 % whose persistent state mirrors the plant.

@@ -8,19 +8,30 @@ function C = sweep_saturation_campaign(visualize, cap_grid)
 % reachability, the ascending(1-3)/feasible(4-8) per-station stratification, the
 % landing centroid + half-radius, and the H3 clip-active fractions.
 %
-% Pre-registered hypotheses this sweep adjudicates:
+% Pre-registered hypotheses this sweep adjudicates, with what the 2026-07-23 run
+% actually returned. Both are kept so each prediction can be read against what
+% happened; full numbers live in docs/plan_saturation_cap_campaign.md.
 %   H1  a tighter cap WIDENS dSMC's feasible-regime lead over SE(3) (allocation
 %       matters more; SE(3)'s naive clip degrades most).
+%       CONFIRMED: fea 1.000 vs SE(3) 0.671@cap2, 0.482@cap1.5, 0.200@cap1.
 %   H2  the ascending cliff is CAP-INVARIANT (dSMC ~0, SE(3) ~31/55 across the
 %       whole grid) -- it lives at Omega2_min=0 (thrust-sign wall), not the cap.
+%       HALF RIGHT: dSMC ascending is 0.000 at every cap including 100, so its
+%       cliff is architectural as predicted. SE(3)'s is not cap-invariant at all.
+%       It climbs from 0 to 0.836 by cap 5, so SE(3) there is authority-gated.
 %   H3  SE(3) is cap-insensitive until its geometric law starts saturating --
 %       distinguished by clip_hi (ceiling) vs clip_lo (motor cutoff) fractions.
+%       CONFIRMED: SE(3) clip_hi 0.594@cap0.6 falls to 0.000@cap100.
 %
-% visualize : bool (default true) -> render figs/CAP_01..CAP_04 + save log.
+% visualize : bool (default true) -> render figs/CAP_01..CAP_04. The log is
+%             written either way (before the figures, so a plotting error cannot
+%             cost a multi-hour sweep).
 % cap_grid  : optional override (default [0.6 1 1.5 2 3 5 100]).
 %
 % C : struct of n_arm x n_cap result matrices + axes/metadata, also saved to
-%     logs/saturation_campaign_log.mat (checkpoint: saturation_campaign_ckpt.mat).
+%     logs/saturation_campaign_log.mat. logs/saturation_campaign_ckpt.mat is
+%     written after every (arm, cap) but never read back -- it is a crash
+%     forensics dump, not a resume point. A killed run restarts from scratch.
 
 if nargin < 1 || isempty(visualize), visualize = true; end
 if nargin < 2 || isempty(cap_grid),  cap_grid  = [0.6 1.0 1.5 2.0 3.0 5.0 100]; end

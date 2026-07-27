@@ -12,6 +12,11 @@ function [res, info] = test_baseline_single(model, mode, varargin)
 % Returns res (logical scalar for apogee; logical mask for envelope) and info
 % (the ballistic_success diagnostic struct, or a cell array of them). Prints a
 % per-run breakdown of the four success conditions.
+%
+% There is no cap knob here: this always runs at whatever Omega2_max constants.m
+% sets (the default 2), because it calls `constants` itself below. For a peer
+% score at a swept cap, use sweep_ballistic_envelope, which overrides the bus
+% field per trial.
 
     if nargin < 2 || isempty(mode), mode = 'apogee'; end
     ip = inputParser;

@@ -101,8 +101,12 @@ d = 2;   % yaw torque coefficient
 Omega2_min = 0.0;
 Omega2_max = constants.Omega2_max;
 
-% Matched contraction rate k_xi(alpha) = eta_alpha * dt per channel (Plan A+
-% §4.4); ordering follows xi: [thrust/z; roll/Mx; pitch/My; yaw/Mz].
+% Contraction rate k_xi(alpha) = 1.2741 * eta_alpha * dt per channel; ordering
+% follows xi: [thrust/z; roll/Mx; pitch/My; yaw/Mz]. The 1.2741 scale came out
+% of the LHS gain search (2026-07-22) -- the matched Plan A+ §4.4 choice
+% k_xi = eta_alpha * dt is the unit-scale design point; the paper's stability
+% certificates hold for any diagonal K_xi in (0,2) and quote their binding
+% constants at this implemented scale (root.tex eq:sat-nu2-bound).
 k_xi = 1.2741 * [nuz * dt; nu3 * dt; nu4 * dt; nupsi * dt];
 
 %% Mixing matrix (Omega^2 -> u)
@@ -129,12 +133,13 @@ dxk_d = (xkp1_d - xk_d) / dt;   % zero for constant references
 szk   = az   * (xk_d(3) - xk(3)) + (dxk_d(3) - dxk(3));
 spsik = apsi * (xk_d(6) - xk(6)) + (dxk_d(6) - dxk(6));
 
-% The [-2, 2] clip is load-bearing. Plan A+ theory says xi should absorb
-% sustained deficits and make it redundant; in practice (2026-05-15 sweep
-% diagnostic) disabling it landed zero successful sweep trajectories at any
-% deploy point -- even at the historical 200 Hz rate (dt=1/200; the working
-% rate is constants.dt = 1/50). Transient growth of s_z, s_psi before xi
-% converges still needs the clip.
+% The clip is load-bearing. Plan A+ theory says xi should absorb sustained
+% deficits and make it redundant; in practice (2026-05-15 sweep diagnostic)
+% disabling it landed zero successful sweep trajectories at any deploy point --
+% even at the historical 200 Hz rate (dt=1/200; the working rate is
+% constants.dt = 1/50). Transient growth of s_z, s_psi before xi converges
+% still needs it. The band came out of the LHS gain search (2026-07-22); the
+% untuned baseline in dsmc_no_constraints.m clips at [-2, 2].
 szk   = min(szk,   1.5780);  szk   = max(szk,   -1.5780);
 spsik = min(spsik, 1.5780);  spsik = max(spsik, -1.5780);
 

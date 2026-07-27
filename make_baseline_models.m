@@ -33,8 +33,13 @@ function make_baseline_models(ctrls, overwrite)
     leader    = '/smc single/Leader';           % Subsystem Reference block (top model)
     chart_sub = '/Subsystem/MATLAB Function';   % control-law chart (referenced file)
 
-    % Populate the base workspace (bus object etc.) so model load callbacks
-    % resolve cleanly during the clone.
+    % Build constants_struct + constants_struct_bus in the base workspace so the
+    % models' bus ports resolve while we load and re-save them. This is doing the
+    % work the source model's PostLoadFcn was supposed to do: that callback is set
+    % to the string 'init.m', which is not a valid command (it should be `init`),
+    % so it fails and warns on every load. The clones inherit the same broken
+    % callback. That does no harm, since anything that simulates them runs
+    % constants.m first, but it is why this line has to stay.
     evalin('base', 'constants');
 
     for i = 1:numel(ctrls)

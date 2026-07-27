@@ -32,7 +32,7 @@ Jyy = 1.8e-3;    % kg m^2
 Jzz = 1.5e-3;    % kg m^2
 
 % State z = [vx vy vz  wx wy wz  theta phi psi  X Y Z]; input u = [dT Mx My Mz]
-% (u1 = thrust DELTA from hover). Identical to constants.m lines 32-62.
+% (u1 = thrust DELTA from hover). Identical to the A/B/C block in constants.m.
 A = [0 0 0 0 0 0 -g 0 0 0 0 0;
      0 0 0 0 0 0 0 g 0 0 0 0;
      0 0 0 0 0 0 0 0 0 0 0 0;
@@ -208,7 +208,10 @@ end
 domReal = max(real(clpoles));       % least-negative stable pole = dominant mode
 tau_dom = -1 / domReal;             % dominant time constant [s]  (domReal < 0 here)
 ts_est  = 4 * tau_dom;              % ~2% settling time [s]
-Ttrial  = 30;                       % envelope trial StopTime [s] (sweep_landing_centroid)
+Ttrial  = 30;                       % envelope trial StopTime [s] (analysis.m /
+                                    % sweep_ballistic_envelope; the landing sweep
+                                    % in sweep_landing_centroid runs 60 s, so this
+                                    % is the tighter of the two horizons)
 fprintf('Dominant CL time constant       : %.2f s   (~%.0f s 2%%-settling)\n', tau_dom, ts_est);
 if ts_est > Ttrial
     warning('hinf_design:slowpos', ...

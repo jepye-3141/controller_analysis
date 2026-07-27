@@ -5,6 +5,15 @@ function u = adrc_controller(A, B, state, xd, x0, constants) %#ok<INUSL>
 % ballistic-stabilization comparison. Plan: docs/controller_baselines_plan.md
 % section 5.2.
 %
+% ENVELOPE RESULT: 0/17 on the 17-point ballistic-stabilization envelope (SE(3)
+% 14/17, dSMC-sat 9/17; docs/controller_baselines_plan.md). Read that zero as a
+% baseline outcome, not a broken file: this law is small-signal by construction
+% -- the tilt inversion below is the near-hover map theta_d = -ax_b/g, and the
+% z3 clamp exists because a hard deploy saturates every channel ~1000x -- so a
+% tumbling deploy starts well outside the regime it is parameterized for.
+% Re-score any change with test_baseline_single.m -- same seeds, same oracle as
+% the envelope.
+%
 % Architecture -- Gao bandwidth-parameterized cascade: six 3rd-order discrete
 % Extended State Observers (ESO) + PD, all forward-Euler at dt = 1/50 s. Each
 % ESO estimates [output; rate; total-disturbance f]; the PD forms a virtual
@@ -51,16 +60,19 @@ function u = adrc_controller(A, B, state, xd, x0, constants) %#ok<INUSL>
 % Forward-Euler discretization margin (reviewed 2026-07-17, kept as-is): the
 % inner attitude channel (wo=36) is the tightest, wo*dt=0.72. It is stable
 % (triple discrete ESO pole at 1-wo*dt=0.28, well inside the unit circle; the
-% Euler bound is wo*dt<2) and validated end-to-end, but forward Euler realizes
-% it slightly more aggressively than a matched Tustin/ZOH discretization would,
+% Euler bound is wo*dt<2) and it has been run end-to-end. That is a claim about
+% the discretization only. It says nothing about whether this arm recovers a
+% ballistic deploy, which is a separate question. Forward Euler does realize the
+% observer slightly more aggressively than a matched Tustin/ZOH would,
 % and the innovation gain La3=46656 would amplify measurement noise. Benign in
 % THIS harness: the controller is fed exact, noise-free plant state and the
 % inner reference is slow (outer wc=1.5). If sensor noise or a faster inner
 % reference is later introduced (e.g. swarm parity), re-tune with wo*dt<=0.5
 % while keeping wo>=3*wc (so the ESO stays faster than its loop) -- which means
 % also slowing wc, hence re-deriving the whole cascade -- or Tustin-discretize
-% the ESO; then re-validate. Not done here: it changes the validated closed
-% loop for zero benefit in the current noise-free single-drone case.
+% the ESO; then re-check. Not done here: it perturbs the tuning the recorded
+% results were produced with, for zero benefit in the current noise-free
+% single-drone case.
 
 %% Persistent ESO state: one [z1; z2; z3] per channel (z1~output estimate,
 %% z2~rate estimate, z3~lumped-disturbance estimate). Seeded from x0.
@@ -121,6 +133,12 @@ phi_d    = min(max(phi_d,   -tilt_max), tilt_max);
 %% each actuator can actually produce (|Mx|,|My| <= 10, |Mz| <= 8 Nm from
 %% apply_rotor_clip; horizontal accel via tilt <= g*tan(tilt_max)). Beyond the
 %% authority a larger z3 only demands an unachievable actuator effort.
+%% These moment numbers are frozen at the DEFAULT cap: 10 = b*Omega2_max and
+%% 8 = 2*d*Omega2_max evaluated at Omega2_max = 2. They do not track
+%% constants.Omega2_max, so a swept cap would leave them mismatched to the real
+%% authority. That does no harm today, since the cap campaign only sweeps the two
+%% dSMC arms and SE(3). Derive them from constants.Omega2_max before putting ADRC
+%% in a cap sweep.
 z3lim_o   = g * tan(tilt_max);
 z3lim_z   = 2 * g;
 z3lim_att = 10 / Jxx;   % Jxx = Jyy
