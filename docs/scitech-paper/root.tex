@@ -79,7 +79,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-Highly unstable initial states, such as those produced by ballistic deployment, require nonlinear controllers to stabilize the tumble before the vehicle crashes. We derive and test two nonlinear controllers for which we establish Lyapunov-based stability conditions: a continuous-time Sliding Mode Controller (cSMC) and a discrete-time Sliding Mode Controller (dSMC). These conditions govern the four actuated channels (altitude, roll, pitch, and yaw); the cSMC guarantee is continuous-time and does not survive discretization, whereas the dSMC is built directly in discrete time and holds under the discretized plant. We test these against two off-the-shelf controllers: the Linear Quadratic Regulator with Integral Action (LQR) and the cascaded Proportional-Integral-Derivative (PID) controller. Sampling 17 deployment states along one ballistic trajectory, we find the dSMC recovers more of them than the LQR, PID, or continuous-time controllers. We then extend the dSMC to account for possible motor control constraints in terms of maximum squared rotational speed. If the desired motor speeds fall within the physical bounds, then the augmented controller and the ideal controller are identical, and we satisfy the exponential reaching law. Otherwise, we saturate the control inputs in order of increasing importance---yaw first, then altitude/thrust, then pitch/roll---and obtain a weaker input-to-state stability (ISS) bound that holds while the trajectory stays within an explicit envelope. However, despite this weaker stability, on a separate 140-trial landing sweep the priority-weighted saturation raises average landing-site reachability roughly $2.7\times$ over naive per-motor clipping, from $22.1\%$ to $60.7\%$.
+Highly unstable initial states, such as those produced by ballistic deployment, require nonlinear controllers to stabilize the tumble before the vehicle crashes. We derive and test two nonlinear controllers for which we establish Lyapunov-based stability conditions: a continuous-time Sliding Mode Controller (cSMC) and a discrete-time Sliding Mode Controller (dSMC). These conditions govern the four actuated channels (altitude, roll, pitch, and yaw); the cSMC guarantee is continuous-time and does not survive discretization, whereas the dSMC is built directly in discrete time and holds under the discretized plant. We test these against two off-the-shelf controllers: the Linear Quadratic Regulator with Integral Action (LQR) and the cascaded Proportional-Integral-Derivative (PID) controller. Sampling 17 deployment states along one ballistic trajectory, we find the dSMC recovers more of them than the LQR, PID, or continuous-time controllers. We then extend the dSMC to account for possible motor control constraints in terms of maximum squared rotational speed. If the desired motor speeds fall within the physical bounds, then the augmented controller and the ideal controller are identical, and we satisfy the exponential reaching law. Otherwise, we saturate the control inputs in order of increasing importance---yaw first, then altitude/thrust, then pitch/roll---and obtain a weaker input-to-state stability (ISS) bound that holds while the trajectory stays within an explicit envelope. However, despite this weaker stability, on a separate 140-trial landing sweep the priority-weighted saturation raises average landing-site reachability roughly $2.7\times$ over simple per-motor clipping, from $22.1\%$ to $60.7\%$.
 \end{abstract}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
@@ -672,7 +672,7 @@ s_{\psi,\,k+1}
 \end{equation}
 \endgroup
 
-In implementation, the fully-actuated sliding variables are saturated to $s_{z,k},\, s_{\psi,k} \in [-2,\, 2]$ before entering the control laws (Table~\ref{tab:gains-scalars}). Outside that band the reaching step becomes the constant-rate $\Delta_{k+1,k} s_i = -2\,\eta_i\,\Delta t\,\sgn(s_{i,k})$, which still satisfies the discrete existence condition $|s_{i,k+1}| < |s_{i,k}|$ for $\eta_i\,\Delta t < 2$; the exponential reaching law above is recovered once $|s_{i,k}| \leq 2$. In the saturated controller of Section~\ref{sec:sat-aux}, the clip is applied to $s$ before the auxiliary-state correction that forms $\tilde s$.
+In implementation, the fully-actuated sliding variables are saturated to a band $s_{z,k},\, s_{\psi,k} \in [-c,\, c]$ before entering the control laws, with $c = 2$ for the baseline formulation and $c = 1.578$ for the tuned saturated formulation (Table~\ref{tab:gains-scalars}). Outside the band the reaching step becomes the constant-rate $\Delta_{k+1,k} s_i = -c\,\eta_i\,\Delta t\,\sgn(s_{i,k})$, which still satisfies the discrete existence condition $|s_{i,k+1}| < |s_{i,k}|$ for $\eta_i\,\Delta t < 2$; the exponential reaching law above is recovered once $|s_{i,k}| \leq c$. In the saturated controller of Section~\ref{sec:sat-aux}, the clip is applied to $s$ before the auxiliary-state correction that forms $\tilde s$.
 
 Contrary to this formulation, \cite{refs:Xiong2016} proposed the following control laws for the fully-actuated dimensions of the quadrotor:
 \begin{align}
@@ -783,7 +783,7 @@ u_{3,k}
 \begin{table}[t]
 \vspace*{25pt}
 \centering
-\caption{Gains and scalar parameters.}
+\caption{Gains and scalar parameters. Reaching-law gains, sliding-surface coefficients and the sliding-variable clip are those of the saturated dSMC, set by a global Latin-hypercube search over landing reachability; the parenthesized value is the untuned baseline set that the no-saturation formulation still runs.}
 \label{tab:gains-scalars}
 \begin{tabular}{ll@{\hskip 18pt}ll}
 \toprule
@@ -792,12 +792,12 @@ Parameter & Value & Parameter & Value \\
 $K_1$ & $0.0001$ & $K_2$ & $0.0001$ \\
 $K_3$ & $0.0001$ & $K_4$ & $0.0012$ \\
 $K_5$ & $0.0012$ & $K_6$ & $0.0012$ \\
-$\eta_z$ & $7$ & $\eta_\psi$ & $7$ \\
-$\eta_\phi$ & $14$ & $\eta_\theta$ & $14$ \\
-$\alpha_z$ & $6$ & $\alpha_\psi$ & $1$ \\
+$\eta_z$ & $7.3044$ $(7)$ & $\eta_\psi$ & $8.2874$ $(7)$ \\
+$\eta_\phi$ & $4.9968$ $(14)$ & $\eta_\theta$ & $4.9968$ $(14)$ \\
+$\alpha_z$ & $10.4815$ $(6)$ & $\alpha_\psi$ & $3.1535$ $(1)$ \\
 $b$ & $5$ & $d$ & $2$ \\
 $\Omega^2_{\min}$ & $0$ & $\Omega^2_{\max}$ & $2$ \\
-$s_z, s_\psi$ clip & $\pm 2$ & $k_{\xi,\alpha}$ & $\eta_\alpha\,\Delta t$ \\
+$s_z, s_\psi$ clip & $\pm 1.578$ $(\pm 2)$ & $k_{\xi,\alpha}$ & $1.2741\,\eta_\alpha\,\Delta t$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -810,18 +810,18 @@ $s_z, s_\psi$ clip & $\pm 2$ & $k_{\xi,\alpha}$ & $\eta_\alpha\,\Delta t$ \\
 \renewcommand{\arraystretch}{1.05}
 \begin{table}[t]
 \centering
-\caption{Coefficient definitions $a_i$.}
+\caption{Coefficient definitions $a_i$, for the saturated dSMC. The untuned baseline formulation uses $6$, $2$, $2$ and $8$ in place of the four leading constants, mirrored in $a_5$--$a_8$.}
 \label{tab:a-coeffs}
 \begin{tabular}{ll@{\hskip 18pt}ll}
 \toprule
 $a_i$ & Definition & $a_i$ & Definition \\
 \midrule
-$a_1$ & $\displaystyle \frac{6\,m}{u_T\,\cs\psi}$
-& $a_2$ & $\displaystyle \frac{2\,m}{u_T\,\cs\psi}$ \\
-$a_3$ & $2$ & $a_4$ & $8$ \\
-$a_5$ & $\displaystyle -\frac{6\,m}{u_T\,\cs\phi\,\cs\psi}$
-& $a_6$ & $\displaystyle -\frac{2\,m}{u_T\,\cs\phi\,\cs\psi}$ \\
-$a_7$ & $2$ & $a_8$ & $8$ \\
+$a_1$ & $\displaystyle \frac{5.1762\,m}{u_T\,\cs\psi}$
+& $a_2$ & $\displaystyle \frac{0.7410\,m}{u_T\,\cs\psi}$ \\
+$a_3$ & $3.4330$ & $a_4$ & $14.6286$ \\
+$a_5$ & $\displaystyle -\frac{5.1762\,m}{u_T\,\cs\phi\,\cs\psi}$
+& $a_6$ & $\displaystyle -\frac{0.7410\,m}{u_T\,\cs\phi\,\cs\psi}$ \\
+$a_7$ & $3.4330$ & $a_8$ & $14.6286$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -886,12 +886,12 @@ At evenly spaced points along the ballistic trajectory (Figure~\ref{fig:ballisti
 \frac{|v_t|_2}{|v_0|_2} \le 2, \quad
 \frac{|\dot\Theta_t|_2}{\bigl|[\pi\,\pi\,\pi]^{\top}\bigr|_2} \le 2 \;\; (t > 1\,\text{s}).
 \end{equation}
-The first condition bounds the final horizontal position error to within $10\,\text{m}$ of the target. The second prevents the controller from accelerating the vehicle past twice its initial deployment speed $|v_0|_2$. The third caps the Euler-angle rate $\dot\Theta_t=[\dot\theta\,\dot\phi\,\dot\psi]$ at twice $|[\pi\,\pi\,\pi]^{\top}|_2 = \pi\sqrt{3} \approx 5.44\,\text{rad/s}$, the magnitude of a rate vector with $\pi\,\text{rad/s}$ on each axis. The rotational-rate bound is evaluated only after the first second of flight: the vehicle is released tumbling, so rate excursions inside that window reflect the ballistic-separation transient the controller is still arresting, not the controller itself. The criterion is scored on horizontal position, whereas our stability analysis certifies the four actuated sliding variables (altitude, roll, pitch, and yaw); horizontal $(x,y)$ motion rides on the underactuated attitude channels, and its convergence is shown empirically here, not proven. Figure \ref{fig:ballistic_envelope} shows that no controller recovers every sampled state; the dSMC recovers the largest share (the saturated variant, 9 of 17 sampled states), concentrated on the descending leg past apogee. LQR and PID operate too far from their hover linearization, and cSMC’s continuous-time stability argument does not transfer to the sampled-data implementation. Each baseline uses gains tuned for stable hover and step tracking (Tables~\ref{tab:pid-gains} and \ref{tab:smc-pid-gains}, and the LQR weights of Equation~\ref{eq:lqr-weights}), not detuned to favor the dSMC; the failures here are structural---a linearization or continuity assumption broken by the tumbling deploy---rather than an artifact of gain choice. We did not exhaustively search each baseline's gain space, so we report the separation as observed on this envelope rather than as a gain-independent ranking.
+The first condition bounds the final horizontal position error to within $10\,\text{m}$ of the target. The second prevents the controller from accelerating the vehicle past twice its initial deployment speed $|v_0|_2$. The third caps the Euler-angle rate $\dot\Theta_t=[\dot\theta\,\dot\phi\,\dot\psi]$ at twice $|[\pi\,\pi\,\pi]^{\top}|_2 = \pi\sqrt{3} \approx 5.44\,\text{rad/s}$, the magnitude of a rate vector with $\pi\,\text{rad/s}$ on each axis. The rotational-rate bound is evaluated only after the first second of flight: the vehicle is released tumbling, so rate excursions inside that window reflect the ballistic-separation transient the controller is still arresting, not the controller itself. Of these conditions only the velocity bound can be re-scored from stored trial data without re-simulating, since it enters as the single inequality $|v_t|_2/|v_0|_2 \le V$ evaluated on a logged trace; re-scoring every dSMC trial at $V \in \{2,\,3,\,5,\,10,\,\infty\}$ leaves all four of the counts we report unchanged---$6$ and $9$ of $17$ on this envelope, and $31$ and $85$ of $140$ on the landing sweep of Section~\ref{sec:sat-validation}. The largest speed ratio reached by any trial that satisfies the other conditions is $1.40$, so no trial sits near the threshold and the reported separations do not depend on where it is placed. That insensitivity is in part a property of the plant: the simulated vehicle integrates rigid-body dynamics under gravity and thrust with no aerodynamic drag, so no terminal velocity arises on its own, failures diverge instead of settling at some large speed, and this condition stands in for the speed limit a real airframe would impose. The drag coefficients retained in the implemented thrust and yaw laws ($K_3$ and $K_6$ of Table~\ref{tab:gains-scalars}) accordingly compensate a term the simulated plant does not contain; at these values that correction is orders of magnitude below the gravitational term and does not affect the results reported here. The criterion is scored on horizontal position, whereas our stability analysis certifies the four actuated sliding variables (altitude, roll, pitch, and yaw); horizontal $(x,y)$ motion rides on the underactuated attitude channels, and its convergence is shown empirically here, not proven. Figure \ref{fig:ballistic_envelope} shows that no controller recovers every sampled state; the dSMC recovers the largest share (the saturated variant, 9 of 17 sampled states), concentrated on the descending leg past apogee. LQR and PID operate too far from their hover linearization, and cSMC’s continuous-time stability argument does not transfer to the sampled-data implementation. Each baseline uses gains tuned for stable hover and step tracking (Tables~\ref{tab:pid-gains} and \ref{tab:smc-pid-gains}, and the LQR weights of Equation~\ref{eq:lqr-weights}), not detuned to favor the dSMC; the failures here are structural---a linearization or continuity assumption broken by the tumbling deploy---rather than an artifact of gain choice. We did not exhaustively search each baseline's gain space, so we report the separation as observed on this envelope rather than as a gain-independent ranking.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=1.0\linewidth]{figs/39_ballistic_envelope.png}
-\caption{Ballistic stabilization at test points along the trajectory. Recovered states per controller (of 17 sampled): LQR 5, PID 0, cSMC 0, dSMC without saturation 6, dSMC with priority-weighted saturation 9.}
+\caption{Ballistic stabilization at test points along the trajectory. Recovered states per controller (of 17 sampled): LQR 5, PID 0, cSMC 0, dSMC without saturation 6, dSMC with priority-weighted saturation 9. The two dSMC formulations differ in gain set as well as saturation handling (Table~\ref{tab:gains-scalars}), so the 6-to-9 margin is not attributable to the saturation handler alone. Isolating the handler at matched tuned gains and the same $\Omega^2_{\max} = 2$, simple per-motor clipping recovers 3 of 17 and the priority-weighted allocation 9 of 17; the allocation gives up no state that clipping recovers.}
 \label{fig:ballistic_envelope}
 \end{figure}
 
@@ -983,7 +983,7 @@ where $\mathbf{1} = (1,1,1,1)^T$, $e_{M_x} = (0,-1,0,1)^T$, $e_{M_y} = (-1,0,1,0
 \right\}\right)\right),
 \end{equation}
 \normalsize
-returning $0$ if any component with $\text{dir}_i = 0$ has $\text{base}_i \notin [\Omega^2_{\min},\, \Omega^2_{\max}]$. When the base point is itself feasible, the point returned by Equation~\ref{eq:sat-maxscale} is feasible; when it is not, the returned scale carries no such guarantee. The trailing feasibility checks in the cascade below are therefore load-bearing rather than redundant: each stage short of the terminal fallback returns its candidate only after re-checking the full motor-space point.
+returning $0$ if any component with $\text{dir}_i = 0$ has $\text{base}_i \notin [\Omega^2_{\min},\, \Omega^2_{\max}]$. The implementation additionally tracks the lower interval endpoints contributed by the opposite box face and returns $0$ when the per-component intervals for the scale have empty intersection, so an unreachable stage yields a zero scale rather than an unguaranteed one. When the base point is itself feasible, the two forms coincide and the point returned by Equation~\ref{eq:sat-maxscale} is feasible; when it is not, the returned scale carries no such guarantee. The trailing feasibility checks in the cascade below are therefore load-bearing rather than redundant: each stage short of the terminal fallback returns its candidate only after re-checking the full motor-space point.
 
 We apply cascaded saturation by successively saturating channels, in ascending order of importance, until we reach a feasible control effort. So, we accept relatively minor errors in exchange for controlling more important channels. 
 
@@ -1034,7 +1034,7 @@ Each control channel of the auxiliary state has its own contraction variable, $1
 \label{eq:sat-matched}
 k_{\xi\, \alpha} = \eta_\alpha\, \Delta t,
 \end{equation}
-which is the same rate at which the unconstrained reaching law drives $s$ to zero. This way, we can reuse the dSMC gains directly via Equation~\ref{eq:sat-matched}, as in the zero-control-deficit case, we recover the unsaturated dSMC controller. Both blocks of the closed-loop matrix $\mathcal{A}_k$ (Equation~\ref{eq:sat-closed-loop}) then decay at consistent per-channel rates, and the steady-state residual analysis of Section~\ref{sec:sat-steadystate} becomes $\Delta t$-independent ratios. When the commanded per-motor speeds lie within the feasible range, $\Delta u_k = 0$ forces $\xi$ to contract to zero, and the modified sliding variable reduces to the baseline $s_k$ (Section~\ref{sec:sat-reduction}).
+which is the same rate at which the unconstrained reaching law drives $s$ to zero. This way, we can reuse the dSMC gains directly via Equation~\ref{eq:sat-matched}, as in the zero-control-deficit case, we recover the unsaturated dSMC controller. Both blocks of the closed-loop matrix $\mathcal{A}_k$ (Equation~\ref{eq:sat-closed-loop}) then decay at consistent per-channel rates, and the steady-state residual analysis of Section~\ref{sec:sat-steadystate} becomes $\Delta t$-independent ratios. The implementation scales all four channels uniformly, $k_{\xi\,\alpha} = 1.2741\,\eta_\alpha\,\Delta t$ (Table~\ref{tab:gains-scalars}), the scale factor having been carried through the same tuning search as the gains. The certificates below do not require the matched choice: they are stated for any diagonal $K_\xi$ satisfying Equation~\ref{eq:sat-xi-update}, the one bound in which $K_\xi$ and $E$ separate is evaluated at the implemented scaling (Equation~\ref{eq:sat-nu2-bound}), and the residual ratios of Section~\ref{sec:sat-steadystate} are independent of $K_\xi$ altogether. When the commanded per-motor speeds lie within the feasible range, $\Delta u_k = 0$ forces $\xi$ to contract to zero, and the modified sliding variable reduces to the baseline $s_k$ (Section~\ref{sec:sat-reduction}).
 
 \subsection{Deficit-Coupling Matrix}
 \label{sec:sat-deficit}
@@ -1186,7 +1186,7 @@ Deriving now the augmented closed-loop system with $(\tilde s, \xi)$, we aim to 
 \qquad
 E \triangleq \Delta t\, \mathrm{diag}(\eta_T,\, \eta_{M_x},\, \eta_{M_y},\, \eta_{M_z}).
 \end{equation}
-As in the unconstrained law, this identity holds inside the clip band $|s_{z,k}|,\, |s_{\psi,k}| \leq 2$ (Table~\ref{tab:gains-scalars}); outside it, the constant-rate reaching step drives the fully-actuated variables into the band, and the certificates below apply once inside. The actually-applied input is $\bar u_k = u_k - \Delta u_k$. By Equation~\ref{eq:sat-C-equals-minusA},
+As in the unconstrained law, this identity holds inside the clip band $|s_{z,k}|,\, |s_{\psi,k}| \leq 1.578$ (Table~\ref{tab:gains-scalars}); outside it, the constant-rate reaching step drives the fully-actuated variables into the band, and the certificates below apply once inside. The actually-applied input is $\bar u_k = u_k - \Delta u_k$. By Equation~\ref{eq:sat-C-equals-minusA},
 \begin{equation}
 \label{eq:sat-saturated-plant}
 \Delta s_k = -E\, \tilde s_k + D_k\, \Delta u_k.
@@ -1332,7 +1332,7 @@ The first Young term carries the quadratic form $(I-E)^T W_s (I-E)$, not the dec
 \label{eq:sat-mu-bound}
 0 < \mu < \min_\alpha \frac{\eta_\alpha \Delta t\,(2 - \eta_\alpha \Delta t)}{(1 - \eta_\alpha \Delta t)^2}.
 \end{equation}
-Hence $\mu \in (0,1)$ alone is insufficient: the absorbed form scales as $(1-\eta_\alpha\Delta t)^2$, not $\eta_\alpha\Delta t\,(2-\eta_\alpha\Delta t)$. For the gains of Table~\ref{tab:gains-scalars} at $50$~Hz ($\eta_z\Delta t = \eta_\psi\Delta t = 0.14$, $\eta_\phi\Delta t = \eta_\theta\Delta t = 0.28$), the binding $(z,\psi)$ channels require $\mu < 0.35$. The second Young term adds to the cross-square residual~(c).
+Hence $\mu \in (0,1)$ alone is insufficient: the absorbed form scales as $(1-\eta_\alpha\Delta t)^2$, not $\eta_\alpha\Delta t\,(2-\eta_\alpha\Delta t)$. For the saturated formulation's gains of Table~\ref{tab:gains-scalars} at $50$~Hz ($\eta_z\Delta t = 0.146$, $\eta_\psi\Delta t = 0.166$, $\eta_\phi\Delta t = \eta_\theta\Delta t = 0.100$), the binding $(\phi,\theta)$ channels require $\mu < 0.234$. The second Young term adds to the cross-square residual~(c).
 
 \item Apply Young’s inequality once more, now to absorb the $\xi$–$\Delta u$ cross-term~(e), with $u = (I-K_\xi)\xi_k$, $v = \Delta u_k$, $P = \rho W_\xi$, parameter $\nu_2 > 0$,
 \small
@@ -1346,7 +1346,7 @@ The first piece carries the form $(I-K_\xi)^T W_\xi (I-K_\xi)$, contributing $+\
 \label{eq:sat-nu2-bound}
 0 < \nu_2 < \min_\alpha \frac{k_{\xi\,\alpha}\,(2 - k_{\xi\,\alpha})}{(1-k_{\xi\,\alpha})^2}.
 \end{equation}
-Under the matched gains of Equation~\ref{eq:sat-matched}, $k_{\xi\,\alpha} = \eta_\alpha \Delta t$ and this bound coincides with Equation~\ref{eq:sat-mu-bound}: both equal $0.35$ for the Table~\ref{tab:gains-scalars} gains at $50$~Hz, binding again on the $(z, \psi)$ channels. The second piece adds to the deficit penalty (f). We fix $\mu$ and $\nu_2$ within Equations~\ref{eq:sat-mu-bound} and \ref{eq:sat-nu2-bound} before selecting $\rho$ in the next step, because the domination condition there must hold against the $\xi$-decay margin that survives this erosion.
+Under the matched gains of Equation~\ref{eq:sat-matched}, $k_{\xi\,\alpha} = \eta_\alpha \Delta t$ and this bound coincides with Equation~\ref{eq:sat-mu-bound}. The implemented $1.2741$ scaling separates the two: at $50$~Hz it gives $\nu_2 < 0.313$ against $\mu < 0.234$, both binding on the $(\phi,\theta)$ channels. The second piece adds to the deficit penalty (f). We fix $\mu$ and $\nu_2$ within Equations~\ref{eq:sat-mu-bound} and \ref{eq:sat-nu2-bound} before selecting $\rho$ in the next step, because the domination condition there must hold against the $\xi$-decay margin that survives this erosion.
 
 \item With $\mu$ and $\nu_2$ fixed, and provided $M_D = \sup_k |D_k| < \infty$ (assumption (iii) below), the sum of the cross-square residual (c) and the leftover from the first Young absorption (Equation~\ref{eq:sat-young}) is bounded by $\bigl[(1 + 1/\mu)\, M_D^2\, |K_\xi|^2\, |W_s|\bigr]\, |\xi_k|^2$. We then choose $\rho$ large enough that the eroded $\xi$-decay dominates this bound,
 \begin{equation}
@@ -1380,9 +1380,9 @@ Under (i) the Schur condition (Equation~\ref{eq:sat-schur}), (ii) hover-trim fea
 
 Assumptions (i) and (ii) are directly checkable from the gains and the feasible set. Assumption (iii) is not: it is nontrivial precisely in the tumbling regime this paper targets, and we state it as an explicit trajectory envelope rather than leaving it implicit. From Table~\ref{tab:a-coeffs},
 \begin{equation}
-D_{2,1} = \Delta t\, a_1\, g_{1,k} = \frac{6\, \Delta t\, T_{y,k}}{u_T\, \cs\psi_k},
+D_{2,1} = \Delta t\, a_1\, g_{1,k} = \frac{5.1762\, \Delta t\, T_{y,k}}{u_T\, \cs\psi_k},
 \qquad
-D_{3,1} = \Delta t\, a_5\, g_{2,k} = -\frac{6\, \Delta t\, T_{x,k}}{u_T\, \cs\phi_k\, \cs\psi_k},
+D_{3,1} = \Delta t\, a_5\, g_{2,k} = -\frac{5.1762\, \Delta t\, T_{x,k}}{u_T\, \cs\phi_k\, \cs\psi_k},
 \end{equation}
 both of which grow without bound as the commanded $u_T \to 0$ or as $\cs\psi_k \to 0$ (respectively $\cs\phi_k\, \cs\psi_k \to 0$), and a ballistically launched, tumbling vehicle can pass near both. We therefore require: there exist $\epsilon_u, \epsilon_a > 0$ such that, along closed-loop trajectories,
 \begin{equation}
@@ -1398,7 +1398,7 @@ both of which grow without bound as the commanded $u_T \to 0$ or as $\cs\psi_k \
 where the first three conditions bound the cross-coupling magnitudes and the last keeps $D_{1,1} > 0$, as used by the deficit-direction argument of Section~\ref{sec:sat-deficit}. Under Equation~\ref{eq:sat-envelope}, every nonzero entry of $D_k$ is bounded---$|T_{x,k}|,\, |T_{y,k}| \leq 1$, since each is the inner product of $(\cs\phi_k\, \s\theta_k,\ \s\phi_k)$, of norm at most one, with a unit vector---and bounding the spectral norm by the Frobenius norm over the six nonzero entries gives the explicit certificate
 \begin{equation}
 \label{eq:sat-MD-bound}
-M_D \;\leq\; \sqrt{6}\; \Delta t\, \max\!\left( \frac{1}{m},\;\; \frac{6}{\epsilon_u\, \epsilon_a},\;\; \frac{a_3\, l}{J_{xx}},\;\; \frac{a_7\, l}{J_{yy}},\;\; \frac{1}{J_{zz}} \right) \;<\; \infty.
+M_D \;\leq\; \sqrt{6}\; \Delta t\, \max\!\left( \frac{1}{m},\;\; \frac{5.1762}{\epsilon_u\, \epsilon_a},\;\; \frac{a_3\, l}{J_{xx}},\;\; \frac{a_7\, l}{J_{yy}},\;\; \frac{1}{J_{zz}} \right) \;<\; \infty.
 \end{equation}
 For the successful-landing trials, Figure~\ref{fig:sat_control_norm_on} shows the applied effort norm holding at the allocation bound through the reaching transient and then relaxing toward hover trim, never approaching zero thrust---evidence for the nonzero-thrust condition of Equation~\ref{eq:sat-envelope}, though not for its attitude conditions. This check is also one-sided: the successful trials are, by selection, exactly those the controller recovers, so the figure shows the envelope is non-vacuous on the recovered set but does not establish that failing trials fail because they leave it. Characterizing where failures exit the envelope is left to future work. We also note that the envelope is needed only to bound the cross-coupling magnitude, not the anti-windup direction on the thrust channel: substituting $D_{1,1} = \Delta t\, \cs\phi_k\, \cs\theta_k / m$ into the wrapped thrust law cancels the attitude factors, giving $\partial u_T / \partial \xi_T = -\eta_z\, \Delta t$, so a positive thrust deficit reduces the commanded thrust by the same amount at every attitude.
 
@@ -1439,7 +1439,7 @@ Under matched gains (Equation~\ref{eq:sat-matched}), $K_\xi = E$ and
 \qquad
 \tilde s_i^\infty = \frac{(D)_{ij}\, c_j}{\eta_i\, \Delta t}.
 \end{equation}
-For a deficit on channel $\alpha$, $c = c_\alpha\, e_\alpha$, the same-channel ratio $|\tilde s_i^\infty|/|c_\alpha| = |D_{i\,\alpha}|/(\eta_i \Delta t)$ becomes, substituting from Equation~\ref{eq:sat-D-matrix},
+At the implemented $1.2741$ scaling only $\xi^\infty$ changes, shrinking to $\xi_\alpha^\infty = c_\alpha/(1.2741\,\eta_\alpha\,\Delta t)$: by Equation~\ref{eq:sat-xi-infty}, $\tilde s^\infty = E^{-1} D\, c$ does not involve $K_\xi$, so every residual ratio below is unchanged. For a deficit on channel $\alpha$, $c = c_\alpha\, e_\alpha$, the same-channel ratio $|\tilde s_i^\infty|/|c_\alpha| = |D_{i\,\alpha}|/(\eta_i \Delta t)$ becomes, substituting from Equation~\ref{eq:sat-D-matrix},
 \small
 \begin{align}
 \label{eq:sat-residual-T}
@@ -1520,7 +1520,7 @@ Centroid $(x, y)$ (m) & $(420.24,\, -257.48)$ & $(414.84,\, -230.05)$ \\
 \normalsize
 
 \section{Conclusions}
-The dSMC recovers more of the ballistic-deployment envelope than the LQR, PID, or cSMC controllers, though no controller recovers every sampled state. Under naive motor-speed clipping the sweep reachability is $22.1\%$; the priority-weighted saturation handler raises it to $60.7\%$. This matters for launched-UAV operations because, given the smaller actuators of a launched UAV, control effort constraints can be severe. The COTS techniques (LQR and PID) and the continuous sliding mode controller do not stabilize the vehicle at most points along the trajectory - this is consistent with our intuition, as the COTS controllers assume linearity and the cSMC controller assumes continuity. For launched-drone operations, and for the off-nominal initial conditions and aggressive flight tested here, the dSMC formulation recovers more of the deployment envelope than the COTS controllers and, unlike cSMC, keeps its stability certificates under our discretized plant. These certificates cover the four actuated channels, and under saturation they hold while the trajectory stays inside the envelope of Equation~\ref{eq:sat-envelope}.
+The dSMC recovers more of the ballistic-deployment envelope than the LQR, PID, or cSMC controllers, though no controller recovers every sampled state. Under simple motor-speed clipping the sweep reachability is $22.1\%$; the priority-weighted saturation handler raises it to $60.7\%$. This matters for launched-UAV operations because, given the smaller actuators of a launched UAV, control effort constraints can be severe. The COTS techniques (LQR and PID) and the continuous sliding mode controller do not stabilize the vehicle at most points along the trajectory - this is consistent with our intuition, as the COTS controllers assume linearity and the cSMC controller assumes continuity. For launched-drone operations, and for the off-nominal initial conditions and aggressive flight tested here, the dSMC formulation recovers more of the deployment envelope than the COTS controllers and, unlike cSMC, keeps its stability certificates under our discretized plant. These certificates cover the four actuated channels, and under saturation they hold while the trajectory stays inside the envelope of Equation~\ref{eq:sat-envelope}.
 
 \subsection{Future Work}
 With an effective saturated controller and centroid generation logic in place, we want to additionally study the inverse problem of mapping from a desired centroid to the ballistic targeting variables (launch azimuth, elevation, velocity, exit spin, etc) required for a min-time landing, a max-likelihood landing, and a min-effort landing. Currently, we are examining numerical surrogate-based approaches to solving this, and have working prototypes in simulation. We plan to move to flight-test verification after, focusing on the ballistic case. Measuring real moments of inertia and drag parameters is the first step toward closing the sim-to-real gap. Inclement-weather operations will require a basic weather model. The dSMC's stability certificates concern the sliding variables and the saturation deficit, not initial-condition or parameter perturbations. Whether the recovered subset (9 of 17 sampled states) also tolerates small velocity and orientation perturbations is an open question we plan to test.
