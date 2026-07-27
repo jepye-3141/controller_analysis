@@ -19,22 +19,45 @@ ATLIS Sims/
 |-- analysis.m                          # Main simulation driver and post-processing
 |-- constants.m                         # Quadrotor parameters, state-space model, LQR gain computation
 |-- linear_nonlinear_comparison.m       # Compares linearized vs nonlinear quadrotor dynamics
-|-- lqr_linearization_and_path_planning.m  # Trajectory optimization (BVP, multiple shooting, RRT*)
-|-- smc_discrete_formulation.m          # Discrete sliding mode controller formulation and test
 |-- trajectory_optimization.m           # Saturation ON/OFF driver: two sweep_landing_centroid runs + plot_saturation_comparison
 |-- sweep_landing_centroid.m            # Reusable parsim sweep + centroid + radial-reachability summary
-|-- centroid_lookup_table.m             # LHS sweep over 6-D launch space -> centroid_lookup_log.mat
-|-- surrogate_optimize.m                # GP surrogate + fmincon over the launch space
+|-- j3_lut_regen.m                      # Current LHS driver: checkpointed regen of centroid_lookup_log.mat (N=41)
+|-- j3_surrogate_refit.m                # GP refit on the LUT log (hr_mode clamp | area_proxy) + LOO-RMSE
+|-- surrogate_optimize.m                # GP surrogate + fmincon over the launch space (historical one-shot)
 |-- replot_TO_04.m                      # Re-render TO_04 from saved sweep log
 |-- replot_TO_07.m                      # Re-render TO_07 from saved sweep log
+|-- replot_LUT_01.m                     # Re-render LUT_01 from the LUT log
+|-- replot_SO_01.m                      # Re-render SO_01 from the surrogate log
 |-- dsmc_no_constraints.m               # Canonical (frozen) discrete SMC, lifted from Simulink block
 |-- dsmc_constraints.m                  # Plan A+ augmented dSMC under active development
+|-- deprecated/                         # centroid_lookup_table.m, smc_discrete_formulation.m,
+|                                       #   lqr_linearization_and_path_planning.m -- do not run (see its README)
+|
+|-- se3_controller.m                    # Journal peer: geometric SE(3) (Lee-Leok-McClamroch)
+|-- hinf_controller.m                   # Journal peer: H-inf runtime law (matrices from hinf_design.m)
+|-- hinf_design.m                       # Offline mixed-sensitivity synthesis, run once by hand
+|-- adrc_controller.m                   # Journal peer: linear ADRC (extended-state observer + PD)
+|-- apply_rotor_clip.m                  # Shared naive per-rotor Omega^2 clip used by all three peers
+|-- make_baseline_models.m              # Clones the dSMC single model + its subsystem ref per peer
+|-- test_baseline_single.m              # Validates one peer model against ballistic_success
+|-- sweep_ballistic_envelope.m          # The 17-point envelope loop, factored out of analysis.m
+|-- sweep_saturation_campaign.m         # Canonical Omega2_max cap sweep -> CAP_01..CAP_04
+|-- run_envelope_cap_campaign.m         # Envelope-vs-cap companion -> ENV_CAP_01
+|-- run_cap_grid_stage1.m               # Cap-grid extension, stage 1 (checkpointed, merges committed logs)
+|-- run_cap_grid_stage2.m               # Cap-grid extension, stage 2 -> CAP_05 + merged log
+|-- replot_CAP_05.m                     # Re-render CAP_05 from the merged grid log
+|-- forensic_envelope.m                 # Per-station dSMC-sat vs SE(3) divergence forensic
+|-- run_crit_cap_sweep.m                # Re-flies the cap grid persisting per-trial crit_table
+|-- rescore_criterion.m                 # Re-scores a stored crit_table at any VelRatioMax
+|-- run_criterion_sensitivity.m         # Criterion-robustness sweep -> CRIT_01
 |
 |-- lqr_controller.slx                  # Continuous LQR controller (single drone)
 |-- pid_redux_controller.slx            # PID controller (single drone)
-|-- smc_controller.slx                  # Continuous SMC controller (single drone)
-|-- zoh_smc_controller.slx              # ZOH SMC controller (single drone)
+|-- zoh_smc_controller.slx              # ZOH SMC controller (single drone) -- the cSMC block
 |-- actual_discrete_smc_controller.slx  # Discrete SMC controller (single drone)
+|-- actual_se3_controller.slx           # SE(3) controller (single drone)
+|-- actual_hinf_controller.slx          # H-inf controller (single drone)
+|-- actual_adrc_controller.slx          # ADRC controller (single drone)
 |-- discrete_lqr_controller.slx        # Discrete LQR controller (single drone)
 |-- discrete_pid_redux_controller.slx   # Discrete PID controller (single drone)
 |
@@ -47,9 +70,11 @@ ATLIS Sims/
 |-- smc_swarm_single.slx                # Single-drone cSMC (for ballistic scenario)
 |-- discrete_smc_swarm_single.slx       # Single-drone dSMC (for ballistic scenario)
 |-- pid_redux_single.slx                # Single-drone PID (for ballistic scenario)
+|-- se3_swarm_single.slx                # Single-drone SE(3) (for ballistic scenario)
+|-- hinf_swarm_single.slx               # Single-drone H-inf (for ballistic scenario)
+|-- adrc_swarm_single.slx               # Single-drone ADRC (for ballistic scenario)
 |
 |-- *.slxc                              # Simulink cache files (auto-generated)
-|-- constants.asv                       # MATLAB autosave of constants.m
 |
 |-- logs/                               # All workspace logs live here (active scripts save/load with logs/ prefix)
 |   |-- analysis_log.mat                # Saved workspace from analysis.m run
@@ -57,13 +82,21 @@ ATLIS Sims/
 |   |-- centroid_lookup_log.mat         # Saved LHS lookup (lookup, ranges, X, N, field_names)
 |   |-- surrogate_optimize_log.mat      # Fitted GPs + recommended theta_best
 |   |-- ballistic_log.mat               # Saved workspace from Mortar_Sim.m
+|   |-- saturation_campaign_log.mat     # Canonical cap anchors (+ _ckpt.mat)
+|   |-- cap_grid_stage1_log.mat         # Cap-grid stage 1 (+ _ckpt.mat)
+|   |-- cap_grid_full_log.mat           # Cap-grid stages merged, read by replot_CAP_05.m
+|   |-- envelope_cap_campaign_log.mat   # Envelope-vs-cap results
+|   |-- forensic_envelope_log.mat       # Per-station divergence forensic traces
+|   |-- crit_cap_sweep_log.mat          # Cap grid with per-trial crit_table retained
+|   |-- criterion_sensitivity_log.mat   # Counts re-scored at VelRatioMax in {2,3,5,10,Inf}
+|   |-- hinf_design.mat                 # Synthesized H-inf controller (Ad_K..Dd_K, gamma, nK)
 |   |-- archive/                        # Historical iteration logs, POC results, dense-sweep archive
 |
 |-- run_logs/                           # stdout/stderr from headless MATLAB runs (.log). No code references these.
 |
 |-- proof-of-concept/                   # Banked POC drivers from the down-selected plans (poc_{a..f}, test_pocs*, smoketest_full, diff_step1, atlis_targeting_app)
 |
-|-- figs/                               # Output figures (PNG+EPS): 0-39_*, TO_01..07 (+ _sat_on/_sat_off), SAT_CMP_summary, LUT_01, SO_01, POC_*
+|-- figs/                               # Output figures (PNG+EPS): 0-39_*, TO_01..07 (+ _sat_on/_sat_off), SAT_CMP_summary, LUT_01, SO_01, CAP_01..05, ENV_CAP_01, POC_*
 |-- docs/                               # This documentation folder (plans + design docs)
 |   |-- archived/                       # Banked stochastic plans (B-F), surveys, judges, POC reports
 |-- ATLIS Ongoing Research/             # Research materials (not tracked)
@@ -151,10 +184,10 @@ Controllability and observability are verified via `ctrb()` and `obsv()` rank te
 ### 2. Continuous SMC (Sliding Mode Control)
 - Uses nonlinear 6-DOF dynamics directly
 - Sliding surfaces defined on position/velocity error
-- Implemented in `smc_controller.slx`
+- Implemented in `zoh_smc_controller.slx` (the orphan `smc_controller.slx`, which held the same law with two latent bugs, was deleted 2026-07-20)
 
 ### 3. Discrete SMC
-- Discrete-time sliding mode formulation (`smc_discrete_formulation.m`)
+- Discrete-time sliding mode formulation (prototyped in `deprecated/smc_discrete_formulation.m`; the shipped laws are `dsmc_no_constraints.m` and `dsmc_constraints.m`)
 - Decoupled into actuated (z, yaw) and underactuated (x/roll, y/pitch) channels
 - Sliding surfaces: `sz`, `spsi` for actuated; `sphi`, `stheta` for underactuated
 - Uses reaching law with tunable gains (nuz, nupsi, nu3, nu4)
@@ -171,11 +204,12 @@ Controllability and observability are verified via `ctrb()` and `obsv()` rank te
 ### Single-Drone Controllers
 These contain the inner-loop control law for one quadrotor:
 - `lqr_controller.slx` / `discrete_lqr_controller.slx`
-- `smc_controller.slx` / `zoh_smc_controller.slx` / `actual_discrete_smc_controller.slx`
+- `zoh_smc_controller.slx` / `actual_discrete_smc_controller.slx`
 - `pid_redux_controller.slx` / `discrete_pid_redux_controller.slx`
+- journal peers: `actual_se3_controller.slx` / `actual_hinf_controller.slx` / `actual_adrc_controller.slx`
 
 ### Swarm Models (10 drones)
-These instantiate 10 copies of a controller, each with offset initial positions. They accept initial conditions from the MATLAB workspace (`xi`, `xf`, `simcase`) and output position (`posout`), velocity (`velout`), and command (`cmdout`) timeseries:
+These instantiate 10 copies of a controller, each with offset initial positions. They accept initial conditions from the MATLAB workspace (`xi`, `xf`, `simcase`) and output position (`posout`) and velocity (`velout`) timeseries, plus command (`cmdout`) on the SMC and dSMC models:
 - `lqr_swarm.slx` -- LQR swarm
 - `smc_swarm.slx` -- continuous SMC swarm
 - `discrete_smc_swarm.slx` -- discrete SMC swarm
@@ -187,14 +221,19 @@ Same structure but with 1 drone, used for ballistic stabilization testing:
 - `smc_swarm_single.slx`
 - `discrete_smc_swarm_single.slx`
 - `pid_redux_single.slx`
+- journal peers: `se3_swarm_single.slx`, `hinf_swarm_single.slx`, `adrc_swarm_single.slx`
+
+All seven also log `rotvelout` (leader Euler-angle rates) and `ctrlout` (the applied `[T Mx My Mz]`). `cmdout` is logged by the SMC, dSMC and peer models but **not** by the LQR or PID models, in either the swarm or single flavour.
 
 ---
 
 ## Main Simulation Script: `analysis.m`
 
-This is the master driver (~2580 lines). It runs all simulations and generates all analysis outputs.
+This is the master driver (~2040 lines). It runs all simulations and generates all analysis outputs.
 
 ### Execution Flow
+
+The line numbers below are indicative only. They were written against a ~2550-line `analysis.m` and the 2026-07-12 release pass cut it to ~2040, so treat them as ordering, not addresses -- find each phase by its section comment.
 
 #### Phase 1: Setup (lines 1-15)
 - Clears workspace, clears Simulink Data Inspector
@@ -355,13 +394,15 @@ The dSMC sweep is deterministic in launch state: one `eom2()` ballistic call see
 
 The current pipeline has two pieces:
 
-1. **`centroid_lookup_table.m`** -- Latin-Hypercube sample (McKay, Beckman & Conover 1979) over the 6-D launch box. Calls `sweep_landing_centroid(_, false)` once per sample (~16 min each) and writes `logs/centroid_lookup_log.mat` plus `figs/LUT_01_trajectories_and_centroids.png`. Each sample produces `(p_centroid, reachability_pct, half_radius)`.
+1. **`j3_lut_regen.m`** -- Latin-Hypercube sample (McKay, Beckman & Conover 1979) over the 6-D launch box. Calls `sweep_landing_centroid(_, false)` once per sample and writes `logs/centroid_lookup_log.mat` plus `figs/LUT_01_trajectories_and_centroids.png`. Each sample produces `(p_centroid, reachability_pct, half_radius)` and a per-sample `radial_profile`. Checkpointed and resumable (N=40 LHS rows plus the operating point re-simulated as row 41). It supersedes `deprecated/centroid_lookup_table.m`, which used the pre-J3 box and stored no radial profile -- do not run that one.
 
 2. **`surrogate_optimize.m`** -- DACE-style Kriging surrogate (Sacks, Welch, Mitchell & Wynn 1989) over the LHS data, optimized in-place rather than via expensive new samples. Four GPs are fit with `fitrgp` using an ARD Matern-5/2 kernel (Rasmussen & Williams 2006): one each for `p_centroid_x`, `p_centroid_y`, `reachability_pct`, and `half_radius`. Multi-start `fmincon` (SQP) on the scalarized objective
    ```
    J(theta) = ||p_centroid_pred(theta) - p_target||^2 - lambda * half_radius_pred(theta)
    ```
    yields `theta_best`. The scalarization is the weighted-sum variant from Marler & Arora (2004); `lambda` is a tunable knob trading centroid accuracy for reach-zone width. With `verify=true` the script runs one ground-truth `sweep_landing_centroid` at the surrogate optimum to bound the GP error. Outputs `logs/surrogate_optimize_log.mat` and `figs/SO_01_predicted_J_slices.png`.
+
+   **Careful with this one.** `j3_surrogate_refit.m` is the current refit path, and the canonical `logs/surrogate_optimize_log.mat` is now the *promoted area_proxy refit* -- its `gp_hr`/`y_hr` are in area_proxy units, not half_radius metres. Re-running `surrogate_optimize.m` as-is would overwrite that log and regress the promotion. Note also that only the horizontal centroid and the half-radius term enter `J`: `gp_reach` is fit but unused, and `p_target(3)` is ignored.
 
 The acquisition machinery from Jones, Schonlau & Welch (1998) (expected-improvement, EGO) is unnecessary here because the inner simulator is noise-free, so the GP variance only contributes to the verification confidence interval, not to a sequential design loop.
 
@@ -399,6 +440,13 @@ Design rationale and full citation list: [`docs/deterministic_optimization_appro
 | LUT_01 | `LUT_01_trajectories_and_centroids.png` | 3D ballistic trajectories + per-sample landing centroid over the LHS launch space |
 | SO_01 | `SO_01_predicted_J_slices.png` | Surrogate `J(theta)` contour slices over `(Vo, el, az, p)` pairs at the GP optimum |
 | SAT_CMP | `SAT_CMP_summary.png` | Saturation ON-vs-OFF comparison: radial profile, centroids, stats (from `plot_saturation_comparison.m`) |
+| CAP_01 | `CAP_01_reach_vs_tw.png` | Landing reachability vs actuator authority `T/W = 4b*Omega2_max/(mg)`, one line per arm (from `sweep_saturation_campaign.m`) |
+| CAP_02 | `CAP_02_reach_stratified.png` | The same sweep split by deploy regime: ascending stations 1-3 vs feasible/descending 4-8 |
+| CAP_03 | `CAP_03_clip_activity.png` | Clip-active fraction of timesteps vs cap (solid = upper ceiling, dashed = lower cutoff) |
+| CAP_04 | `CAP_04_allocation_gap.png` | Reachability gap dSMC-sat minus dSMC-naive vs cap -- the value of priority-weighted allocation |
+| CAP_05 | `CAP_05_se3_crossover_map.png` | SE(3) success vs per-rotor authority on both metrics (envelope /17 left, landing /140 right) over the extended cap grid, with dSMC-sat/nosat flat reference lines and the SE(3) peak starred (from `run_cap_grid_stage2.m`; re-render with `replot_CAP_05.m`) |
+| CRIT_01 | `CRIT_01_velratio_sensitivity.png` | Success counts re-scored at `VelRatioMax` in {2, 3, 5, 10, Inf} across the cap grid -- the criterion-robustness check (from `run_criterion_sensitivity.m`) |
+| ENV_CAP_01 | `ENV_CAP_01.png` | Envelope successes out of 17 vs cap for the three cap-varying arms (from `run_envelope_cap_campaign.m`) |
 
 ---
 
